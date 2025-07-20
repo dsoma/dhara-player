@@ -1,0 +1,19 @@
+{
+    "name": "dhara-player",
+    "version": "0.0.1",
+    "description": "Dhara Player",
+    "type": "module",
+    "main": "index.js",
+    "scripts": {
+        "start": "tsc && node dist/src/index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:dsoma/dhara-player.git"
+    },
+    "author": "Deepak Somashekhara",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "typescript": "^5.7.3"
+    }
+}
