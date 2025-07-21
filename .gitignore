@@ -19,9 +19,18 @@ node_modules/
 # Optional eslint cache
 .eslintcache
 
+# Biome cache
+.biome/
+
 # dotenv environment variable files
 .env
 .env.*
 
+# Output files
 dist/
+
 .DS_Store
+
+# Editor config
+.vscode/
+.editorconfig
