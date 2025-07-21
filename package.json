@@ -5,7 +5,11 @@
     "type": "module",
     "main": "index.js",
     "scripts": {
-        "start": "tsc && node dist/src/index.js"
+        "start": "tsc && node dist/src/index.js",
+        "clean": "rm -rf dist/",
+        "build": "npm run clean && webpack --env mode=production",
+        "build:dev": "npm run clean && webpack --env mode=development --progress",
+        "dev": "npm run build:dev && webpack serve --open"
     },
     "repository": {
         "type": "git",
@@ -14,6 +18,12 @@
     "author": "Deepak Somashekhara",
     "license": "Apache-2.0",
     "devDependencies": {
-        "typescript": "^5.7.3"
+        "html-webpack-plugin": "^5.6.3",
+        "ts-loader": "^9.5.2",
+        "typescript": "^5.7.3",
+        "webpack": "^5.98.0",
+        "webpack-bundle-analyzer": "^4.10.2",
+        "webpack-cli": "^5.1.4",
+        "webpack-dev-server": "^5.2.2"
     }
 }
