@@ -9,7 +9,9 @@
         "clean": "rm -rf dist/",
         "build": "npm run clean && webpack --env mode=production",
         "build:dev": "npm run clean && webpack --env mode=development --progress",
-        "dev": "npm run build:dev && webpack serve --open"
+        "dev": "npm run build:dev && webpack serve --open",
+        "lint": "biome lint .",
+        "lint:fix": "biome lint --write ."
     },
     "repository": {
         "type": "git",
@@ -18,6 +20,7 @@
     "author": "Deepak Somashekhara",
     "license": "Apache-2.0",
     "devDependencies": {
+        "@biomejs/biome": "^2.1.2",
         "html-webpack-plugin": "^5.6.3",
         "ts-loader": "^9.5.2",
         "typescript": "^5.7.3",
