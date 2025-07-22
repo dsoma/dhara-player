@@ -10,6 +10,7 @@
         "build": "npm run clean && webpack --env mode=production",
         "build:dev": "npm run clean && webpack --env mode=development --progress",
         "dev": "npm run build:dev && webpack serve --open",
+        "test-prod": "npm run build && npx serve dist",
         "lint": "biome lint .",
         "lint:fix": "biome lint --write .",
         "prepare": "husky",
@@ -38,6 +39,7 @@
         ]
     },
     "dependencies": {
-        "events": "^3.3.0"
+        "events": "^3.3.0",
+        "loglevel": "^1.9.2"
     }
 }
