@@ -9,6 +9,10 @@ export default class DharaPlayer {
         this._controller = new DharaPlayerController();
     }
 
+    public setSource(sourceUrl: URL) {
+        this._controller.setSource(sourceUrl);
+    }
+
     public destroy() {
         this._controller.destroy();
     }
