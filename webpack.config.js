@@ -4,13 +4,13 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 //import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 const srcDir = path.resolve(__dirname, 'src');
 const outputDir = path.resolve(__dirname, 'dist');
 
 export default (options) => {
-    const isProduction  = options.mode === 'production';
+    const isProduction = options.mode === 'production';
     const sourceMapType = isProduction ? 'hidden-source-map' : 'inline-source-map';
 
     return {
@@ -29,7 +29,7 @@ export default (options) => {
                 {
                     test: /\.ts$/,
                     use: 'ts-loader',
-                    include: [ srcDir ],
+                    include: [srcDir],
                     exclude: /node_modules/
                 }
             ]
@@ -42,6 +42,8 @@ export default (options) => {
                 title: 'Dhara Player',
                 filename: 'index.html',
                 template: path.resolve(srcDir, 'html/index-template.html'),
+                scriptLoading: 'blocking',
+                inject: 'head'
             }),
 
             // new BundleAnalyzerPlugin(),

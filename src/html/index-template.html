@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= htmlWebpackPlugin.options.title %></title>
+    <title>
+        <%= htmlWebpackPlugin.options.title %>
+    </title>
 </head>
+
 <body>
     <div id="player-container">
         <h1>Dhara Player</h1>
@@ -12,7 +16,9 @@
 
     <script>
         const playerContainer = document.getElementById('player-container');
-        const player = new DHARA.Player(playerContainer);
+        const player = new window.DHARA.Player(playerContainer);
+        player.setSource(new URL('https://livesim2.dashif.org/vod/testpic_2s/audio.mpd'));
     </script>
 </body>
+
 </html>
