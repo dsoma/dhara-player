@@ -1,17 +1,10 @@
-export enum ResponseDataType {
-    TEXT = 'text',
-    ARRAY_BUFFER = 'arraybuffer',
-}
-
 export interface LoaderOptions {
-    responseDataType?: ResponseDataType;
     headers?: Record<string, string>;
 }
 
 type ResponseType = string | ArrayBuffer | null;
 
 export default class Loader {
-
     public async load(url: URL, options: LoaderOptions = {}): Promise<ResponseType> {
         let data: ResponseType = null;
 
@@ -24,12 +17,13 @@ export default class Loader {
                 throw new Error(`Status = ${response.status}, Failed to load: ${url}`);
             }
 
-            if (options.responseDataType === ResponseDataType.ARRAY_BUFFER) {
-                data = await response.arrayBuffer();
-            } else {
-                data = await response.text();
-            }
+            const contentType = response.headers.get('content-type');
 
+            if (contentType?.includes('application/dash+xml') || contentType?.includes('text')) {
+                data = await response.text();
+            } else {
+                data = await response.arrayBuffer();
+            }
         } catch (error: unknown) {
             console.error(error instanceof Error ? error.message : 'Unknown error');
             return null;

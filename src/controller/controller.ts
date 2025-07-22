@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import Loader, { ResponseDataType } from '../services/loader';
+import Loader from '../services/loader';
 
 enum DPlayerState {
     INITIAL = 'init',
@@ -16,11 +16,7 @@ export default class DharaPlayerController extends EventEmitter {
     public async setSource(sourceUrl: URL) {
         this._sourceUrl = sourceUrl;
         this._state = DPlayerState.FETCHING_SRC;
-
-        const data = await this._loader.load(sourceUrl, {
-            responseDataType: ResponseDataType.TEXT
-        });
-
+        const data = await this._loader.load(sourceUrl);
         this._state = data ? DPlayerState.READY : DPlayerState.ERROR;
     }
 
