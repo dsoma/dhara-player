@@ -1,3 +1,5 @@
+import log from 'loglevel';
+
 export interface LoaderOptions {
     headers?: Record<string, string>;
 }
@@ -25,7 +27,7 @@ export default class Loader {
                 data = await response.arrayBuffer();
             }
         } catch (error: unknown) {
-            console.error(error instanceof Error ? error.message : 'Unknown error');
+            log.error(error instanceof Error ? error.message : 'Unknown error');
             return null;
         }
 

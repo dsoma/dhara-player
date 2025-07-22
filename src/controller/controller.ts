@@ -1,5 +1,8 @@
 import { EventEmitter } from 'events';
 import Loader from '../services/loader';
+import log from 'loglevel';
+
+log.setLevel('info');
 
 enum DPlayerState {
     INITIAL = 'Init',
@@ -14,7 +17,7 @@ export default class DharaPlayerController extends EventEmitter {
     private readonly _loader: Loader = new Loader();
 
     public async setSource(sourceUrl: URL) {
-        console.log(`[Controller] MPD URL = ${sourceUrl}`);
+        log.info(`[Controller] MPD URL = ${sourceUrl}`);
         this.setState(DPlayerState.FETCHING_SRC, { sourceUrl });
     }
 
@@ -29,7 +32,7 @@ export default class DharaPlayerController extends EventEmitter {
         }
 
         this._state = state;
-        console.log(`[Controller] State = ${state}`);
+        log.info(`[Controller] State = ${state}`);
         this[`_on${state}`](data);
     }
 
@@ -61,8 +64,9 @@ export default class DharaPlayerController extends EventEmitter {
         // Create video element and setup MSE
     }
 
-    private _onError() {
+    private async _onError(data?: any) {
         // Send the error to the error handler
+        log.error(data?.error);
     }
 
     private set error(errMsg: string) {
