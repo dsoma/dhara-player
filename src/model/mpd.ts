@@ -1,11 +1,19 @@
-import ModelBase from './base';
-import { Duration, InitializationSet, MPD_TYPES } from './data-types';
+import ModelBase, { DashTypes } from './base';
+import { Duration } from './data-types';
 import Period from './period';
 import ProgramInformation from './program-info';
 
-const children = {
-    Period,
-    ProgramInformation
+const typeMap = {
+    availabilityStartTime: DashTypes.Date,
+    publishTime: DashTypes.Date,
+    availabilityEndTime: DashTypes.Date,
+    mediaPresentationDuration: DashTypes.Duration,
+    minimumUpdatePeriod: DashTypes.Duration,
+    minBufferTime: DashTypes.Duration,
+    timeShiftBufferDepth: DashTypes.Duration,
+    suggestedPresentationDelay: DashTypes.Duration,
+    maxSegmentDuration: DashTypes.Duration,
+    maxSubsegmentDuration: DashTypes.Duration,
 };
 
 export enum PresentationType {
@@ -34,21 +42,26 @@ export default class Mpd extends ModelBase {
     public readonly programInformations?: ProgramInformation[];
     public readonly baseURLs?: URL[];
     public readonly locations?: string[];
-    public readonly initializationSets?: InitializationSet[];
     public readonly periods: Period[];
 
     /**
      * To add:
-     * PatchLocation, ServiceDescription, InitializationGroup,
+     * PatchLocation, ServiceDescription, InitializationSet, InitializationGroup,
      * InitializationPresentation, ContentProtection, Metrics,
      * EssentialProperty, SupplementalProperty, UTCTiming, LeapSecondInformation
      */
 
     constructor(json: Record<string, any>) {
-        super(json, MPD_TYPES.MPD, children);
+        super(json, typeMap);
+
+        this._create(ProgramInformation);
+        this.periods  = this._buildArray(Period);
+        this.baseURLs = this._buildArray(URL, 'BaseURL');
+
         this.profiles ??= '';
         this.type ??= PresentationType.VOD;
         this.minBufferTime ??= new Duration('');
-        this.periods ??= [];
+
+        this._init();
     }
 }

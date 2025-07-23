@@ -1,5 +1,14 @@
-import { ArrayTypes } from './data-types';
+import { Duration, Descriptor } from './data-types';
 import { ATTR_PREFIX } from '../constants';
+
+export enum DashTypes {
+    Duration = 0,
+    URL,
+    Descriptor,
+    Date,
+    Number,
+    Boolean,
+}
 
 /**
  * Base class for all Dash model objects.
@@ -8,9 +17,7 @@ import { ATTR_PREFIX } from '../constants';
  * (simple types and the children objects) of the model classes from the JSON input.
  */
 export default class ModelBase {
-    constructor(json: Record<string, any>,
-                types?: Record<string, any>,
-                children?: Record<string, any>) {
+    constructor(protected json: Record<string, any>, types?: Record<string, any>) {
         if (!json) {
             return;
         }
@@ -18,8 +25,6 @@ export default class ModelBase {
         for (const [key, value] of Object.entries(json)) {
             if (key.startsWith(ATTR_PREFIX)) {
                 this._fromAttrs(key, value, types);
-            } else {
-                this._fromElements(key, value, children);
             }
         }
     }
@@ -27,40 +32,63 @@ export default class ModelBase {
     /**
      * The attributes of a Dash element (in xml) turn into members with proper data type.
      */
-    protected _fromAttrs(key: string, value: any, types?: Record<string, any>) {
+    protected _fromAttrs(key: string, value: any, types?: Record<string, DashTypes>) {
         const attrName = key.slice(ATTR_PREFIX.length);
-        (this as any)[attrName] = types?.[attrName] ? new types[attrName](value) : value;
-    }
+        const self = this as any;
 
-    /**
-     * The Dash element (in xml) turns into an instance of the corresponding class.
-     */
-    protected _fromElements(key: string, value: any, children?: Record<string, any>) {
-        const className = key.charAt(0).toLowerCase() + key.slice(1);
-
-        if (ArrayTypes.includes(key)) {
-            this._buildArray(`${className}s`, key, value, children);
+        if (!types) {
+            self[attrName] = value;
             return;
         }
 
-        (this as any)[className] = this._buildObject(key, value, children);
-    }
-
-    private _buildArray(className: string, key: string,
-                        value: any, children?: Record<string, any>) {
-        (this as any)[className] = [];
-        const arrayMember: any[] = (this as any)[className];
-
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                arrayMember.push(this._buildObject(key, item, children));
-            }
-        } else {
-            arrayMember.push(this._buildObject(key, value, children));
+        switch (types[attrName]) {
+            case DashTypes.Duration: self[attrName] = new Duration(value); break;
+            case DashTypes.URL: self[attrName] = new URL(value); break;
+            case DashTypes.Descriptor: self[attrName] = new Descriptor(value); break;
+            case DashTypes.Date: self[attrName] = new Date(value); break;
+            case DashTypes.Number: self[attrName] = Number(value); break;
+            case DashTypes.Boolean: self[attrName] = Boolean(value); break;
+            default: self[attrName] = value;
         }
     }
 
-    private _buildObject(key: string, value: any, children?: Record<string, any>): any {
-        return children?.[key] ? new (children as any)[key](value) : value;
+    /**
+     * Build an array of objects from the JSON input.
+     */
+    protected _buildArray(classDef: any, elementName?: string): any[] {
+        const arrayMember: any[] = [];
+        const className = elementName ?? classDef.name;
+
+        if (!this.json?.[className]) {
+            return arrayMember;
+        }
+
+        const value = this.json[className];
+
+        if (!Array.isArray(value)) {
+            arrayMember.push(new classDef(value));
+            return arrayMember;
+        }
+
+        for (const item of value) {
+            arrayMember.push(new classDef(item));
+        }
+
+        return arrayMember;
+    }
+
+    protected _create(classDef: any, elementName?: string) {
+        const className = elementName ?? classDef.name;
+
+        if (!this.json?.[className]) {
+            return;
+        }
+
+        const memberName = className.charAt(0).toLowerCase() + className.slice(1);
+        (this as any)[memberName] = new classDef(this.json[className]);
+    }
+
+    protected _init() {
+        delete (this as any).json;
     }
 }

@@ -1,4 +1,4 @@
-import ModelBase from './base';
+import ModelBase, { DashTypes } from './base';
 
 /**
  * Descriptive information about the program
@@ -9,6 +9,13 @@ export default class ProgramInformation extends ModelBase {
     public readonly moreInformationURL?: URL;
     public readonly title?: string;
     public readonly source?: string;
-    public readonly language?: string;
     public readonly copyright?: string;
+
+    constructor(json: Record<string, any>) {
+        super(json, { moreInformationURL: DashTypes.URL });
+        this.title ??= json.Title;
+        this.source ??= json.Source;
+        this.copyright ??= json.Copyright;
+        this._init();
+    }
 }
