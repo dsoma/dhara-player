@@ -4,7 +4,7 @@ import log from 'loglevel';
 import MpdParser from '../services/mpd-parser';
 import Mpd from '../model/mpd';
 
-log.setLevel('info');
+log.setLevel('debug');
 
 enum DPlayerState {
     INITIAL = 'Init',
@@ -65,7 +65,7 @@ export default class DharaPlayerController extends EventEmitter {
 
         const mpdJson = new MpdParser().parse(data.metadata);
         const mpd = new Mpd(mpdJson);
-        console.log(mpd);
+        log.debug(mpd);
     }
 
     private _onReady() {
