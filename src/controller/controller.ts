@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import Loader from '../services/loader';
 import log from 'loglevel';
 import MpdParser from '../services/mpd-parser';
-import Mpd from '../model/mpd';
+import Media from '../model/media';
 
 log.setLevel('debug');
 
@@ -17,9 +17,11 @@ enum DPlayerState {
 export default class DharaPlayerController extends EventEmitter {
     private _state: DPlayerState = DPlayerState.INITIAL;
     private readonly _loader: Loader = new Loader();
+    private _media: Media | null = null;
 
     public async setSource(sourceUrl: URL) {
         log.info(`[Controller] MPD URL = ${sourceUrl}`);
+        this._media = new Media(sourceUrl);
         this.setState(DPlayerState.FETCHING_SRC, { sourceUrl });
     }
 
@@ -63,9 +65,7 @@ export default class DharaPlayerController extends EventEmitter {
             return;
         }
 
-        const mpdJson = new MpdParser().parse(data.metadata);
-        const mpd = new Mpd(mpdJson);
-        log.debug(mpd);
+        this._media?.build(new MpdParser().parse(data.metadata));
     }
 
     private _onReady() {
