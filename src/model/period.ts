@@ -64,7 +64,7 @@ export default class Period extends ModelBase {
                 }
             }
 
-            return typeId === 3 ? MediaType.VIDEO : MediaType.AUDIO;
+            return typeId >= 2 ? MediaType.VIDEO : MediaType.AUDIO;
         }
 
         // Get type from the mime type in representation if available:
@@ -83,6 +83,6 @@ export default class Period extends ModelBase {
             }
         }
 
-        return typeId === 3 ? MediaType.VIDEO : MediaType.AUDIO;
+        return typeId >= 2 ? MediaType.VIDEO : MediaType.AUDIO;
     }
 }
