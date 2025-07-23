@@ -17,6 +17,7 @@ export default class Representation extends ModelBase {
     public readonly associationType?: string;
     public readonly mediaStreamStructureId?: string;
     public readonly bandwidth: number;
+    public readonly mimeType?: string;
 
     /**
      * To add: BaseURL, ExtendedBandwidth, SubRepresentation,
