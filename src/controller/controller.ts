@@ -1,6 +1,8 @@
 import { EventEmitter } from 'events';
 import Loader from '../services/loader';
 import log from 'loglevel';
+import MpdParser from '../services/mpd-parser';
+import Mpd from '../model/mpd';
 
 log.setLevel('info');
 
@@ -56,8 +58,14 @@ export default class DharaPlayerController extends EventEmitter {
         this.setState(DPlayerState.PREPARING, { metadata });
     }
 
-    private _onPreparing() {
-        // Send the loaded metadata to the mpd parser
+    private async _onPreparing(data?: any) {
+        if (!data?.metadata) {
+            return;
+        }
+
+        const mpdJson = new MpdParser().parse(data.metadata);
+        const mpd = new Mpd(mpdJson);
+        console.log(mpd);
     }
 
     private _onReady() {
