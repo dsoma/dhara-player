@@ -54,8 +54,8 @@ export default class Mpd extends ModelBase {
     constructor(json: Record<string, any>) {
         super(json, typeMap);
 
-        this._create(ProgramInformation);
-        this.periods  = this._buildArray(Period);
+        this._create(ProgramInformation, 'ProgramInformation');
+        this.periods  = this._buildArray(Period, 'Period');
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this.profiles ??= '';

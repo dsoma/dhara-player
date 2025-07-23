@@ -55,7 +55,7 @@ export default class ModelBase {
     /**
      * Build an array of objects from the JSON input.
      */
-    protected _buildArray(classDef: any, elementName?: string): any[] {
+    protected _buildArray(classDef: any, elementName: string): any[] {
         const arrayMember: any[] = [];
         const className = elementName ?? classDef.name;
 
@@ -77,7 +77,7 @@ export default class ModelBase {
         return arrayMember;
     }
 
-    protected _create(classDef: any, elementName?: string) {
+    protected _create(classDef: any, elementName: string) {
         const className = elementName ?? classDef.name;
 
         if (!this.json?.[className]) {

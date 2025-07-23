@@ -1,5 +1,5 @@
 import ModelBase, { DashTypes } from './base';
-import { Descriptor, Duration } from './data-types';
+import { Descriptor, type Duration } from './data-types';
 import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
@@ -37,12 +37,12 @@ export default class Period extends ModelBase {
 
         this.bitstreamSwitching ??= false;
 
-        this._create(SegmentBase);
-        this._create(SegmentList);
-        this._create(SegmentTemplate);
+        this._create(SegmentBase, 'SegmentBase');
+        this._create(SegmentList, 'SegmentList');
+        this._create(SegmentTemplate, 'SegmentTemplate');
         this._create(Descriptor, 'AssetIdentifier');
 
-        this.adaptationSets = this._buildArray(AdaptationSet);
+        this.adaptationSets = this._buildArray(AdaptationSet, 'AdaptationSet');
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this._init();

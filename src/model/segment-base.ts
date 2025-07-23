@@ -1,5 +1,5 @@
 import ModelBase, { DashTypes } from './base';
-import { Duration } from './data-types';
+import type { Duration } from './data-types';
 
 const typeMap = {
     timescale: DashTypes.Number,

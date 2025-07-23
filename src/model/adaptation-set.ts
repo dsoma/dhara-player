@@ -53,11 +53,11 @@ export default class AdaptationSet extends ModelBase {
     constructor(json: Record<string, any>) {
         super(json, typeMap);
 
-        this._create(SegmentBase);
-        this._create(SegmentList);
-        this._create(SegmentTemplate);
+        this._create(SegmentBase, 'SegmentBase');
+        this._create(SegmentList, 'SegmentList');
+        this._create(SegmentTemplate, 'SegmentTemplate');
 
-        this.representations = this._buildArray(Representation);
+        this.representations = this._buildArray(Representation, 'Representation');
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this._init();
