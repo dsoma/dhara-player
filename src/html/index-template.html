@@ -10,15 +10,15 @@
 </head>
 
 <body>
-    <div id="player-container">
-        <h1>Dhara Player</h1>
+    <h1>Dhara Player</h1>
+    <div id="player-container" style="width: 640px; height: 360px;">
     </div>
 
     <script>
         const playerContainer = document.getElementById('player-container');
         const player = new window.DHARA.Player(playerContainer);
-        player.setSource(new URL('https://livesim2.dashif.org/vod/testpic_2s/audio.mpd'));
-        // player.setSource(new URL('https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd'));
+        // player.setSource(new URL('https://livesim2.dashif.org/vod/testpic_2s/audio.mpd'));
+        player.setSource(new URL('https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd'));
     </script>
 </body>
 

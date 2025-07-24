@@ -4,6 +4,7 @@ import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
 import AdaptationSet from './adaptation-set';
+import { MediaType } from './media';
 
 const typeMap = {
     start: DashTypes.Duration,
@@ -46,5 +47,42 @@ export default class Period extends ModelBase {
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this._init();
+    }
+
+    public get type(): MediaType {
+        let typeId = 0;
+        const adaptationSets = this.adaptationSets ?? [];
+
+        // Get type from the content type in adaptation set if available:
+        if (adaptationSets?.[0]?.contentType) {
+            for (const adaptationSet of adaptationSets) {
+                if (adaptationSet.contentType?.startsWith('video')) {
+                    typeId += 2;
+                    break;
+                } else if (adaptationSet.contentType?.startsWith('audio')) {
+                    typeId += 1;
+                }
+            }
+
+            return typeId >= 2 ? MediaType.VIDEO : MediaType.AUDIO;
+        }
+
+        // Get type from the mime type in representation if available:
+        const firstRepresentation = adaptationSets?.[0]?.representations?.[0];
+        if (!firstRepresentation?.mimeType) {
+            return MediaType.UNKNOWN;
+        }
+
+        for (const adaptationSet of adaptationSets) {
+            const mimeType = adaptationSet.representations?.[0]?.mimeType;
+            if (mimeType?.startsWith('video')) {
+                typeId += 2;
+                break;
+            } else if (mimeType?.startsWith('audio')) {
+                typeId += 1;
+            }
+        }
+
+        return typeId >= 2 ? MediaType.VIDEO : MediaType.AUDIO;
     }
 }

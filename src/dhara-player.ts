@@ -1,12 +1,10 @@
 import DharaPlayerController from './controller/controller';
 
 export default class DharaPlayer {
-    private readonly _playerContainer: HTMLElement;
     private readonly _controller: DharaPlayerController;
 
     constructor(playerContainer: HTMLElement) {
-        this._playerContainer = playerContainer;
-        this._controller = new DharaPlayerController();
+        this._controller = new DharaPlayerController(playerContainer);
     }
 
     public setSource(sourceUrl: URL) {
