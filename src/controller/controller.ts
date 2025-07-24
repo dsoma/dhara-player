@@ -3,7 +3,7 @@ import Loader from '../services/loader';
 import log from 'loglevel';
 import MpdParser from '../services/mpd-parser';
 import Media from '../model/media';
-import NativePlayer from './native-player';
+import NativePlayer, { NativePlayerEvent } from './native-player';
 
 log.setLevel('debug');
 
@@ -35,6 +35,7 @@ export default class DharaPlayerController extends EventEmitter {
         super.removeAllListeners();
         this._state = DPlayerState.INITIAL;
         this._nativePlayer?.destroy();
+        this._nativePlayer?.removeAllListeners();
         this._nativePlayer = null;
         this._media.destroy();
     }
@@ -77,10 +78,16 @@ export default class DharaPlayerController extends EventEmitter {
         this._media.build(new MpdParser().parse(data.metadata));
 
         this._nativePlayer = new NativePlayer(this._media.type, this._playerContainer);
+        this._nativePlayer.on(NativePlayerEvent.SOURCE_OPEN, this._onSourceOpen.bind(this));
+        this._nativePlayer.on(NativePlayerEvent.ERROR, (errMsg: string) => { this.error = errMsg; });
+    }
+
+    private _onSourceOpen() {
+        this.setState(DPlayerState.READY);
     }
 
     private _onReady() {
-        // Create video element and setup MSE
+        //
     }
 
     private async _onError(data?: any) {
