@@ -4,6 +4,7 @@ import log from 'loglevel';
 import MpdParser from '../services/mpd-parser';
 import Media from '../model/media';
 import NativePlayer, { NativePlayerEvent } from './native-player';
+import StreamingEngine, { StreamingEngineEvent } from './streaming-engine';
 
 log.setLevel('debug');
 
@@ -20,6 +21,7 @@ export default class DharaPlayerController extends EventEmitter {
     private readonly _loader: Loader = new Loader();
     private readonly _media: Media = new Media();
     private _nativePlayer: NativePlayer | null = null;
+    private _streamingEngine: StreamingEngine | null = null;
 
     constructor(private readonly _playerContainer: HTMLElement) {
         super();
@@ -38,6 +40,8 @@ export default class DharaPlayerController extends EventEmitter {
         this._nativePlayer?.removeAllListeners();
         this._nativePlayer = null;
         this._media.destroy();
+        this._streamingEngine?.destroy();
+        this._streamingEngine = null;
     }
 
     private async setState(state: DPlayerState, data?: any) {
@@ -78,16 +82,17 @@ export default class DharaPlayerController extends EventEmitter {
         this._media.build(new MpdParser().parse(data.metadata));
 
         this._nativePlayer = new NativePlayer(this._media.type, this._playerContainer);
-        this._nativePlayer.on(NativePlayerEvent.SOURCE_OPEN, this._onSourceOpen.bind(this));
+        this._nativePlayer.on(NativePlayerEvent.SOURCE_OPEN, () => { this.setState(DPlayerState.READY); });
         this._nativePlayer.on(NativePlayerEvent.ERROR, (errMsg: string) => { this.error = errMsg; });
     }
 
-    private _onSourceOpen() {
-        this.setState(DPlayerState.READY);
-    }
-
     private _onReady() {
-        //
+        if (!this._nativePlayer) {
+            return;
+        }
+
+        this._streamingEngine = new StreamingEngine(this._media, this._nativePlayer);
+        this._streamingEngine.on(StreamingEngineEvent.ERROR, (errMsg: string) => { this.error = errMsg; });
     }
 
     private async _onError(data?: any) {
