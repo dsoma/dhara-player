@@ -20,6 +20,14 @@ const typeMap = {
     bitstreamSwitching: DashTypes.Boolean,
 };
 
+export enum StreamType {
+    UNKNOWN = 'unknown',
+    AUDIO   = 'audio',
+    VIDEO   = 'video',
+    TEXT    = 'text',
+    MUXED   = 'muxed', // contains both audio and video
+}
+
 /**
  * AdaptationSet element
  * @see ISO/IEC 23009-1:2022, 5.3.3
@@ -45,6 +53,7 @@ export default class AdaptationSet extends ModelBase {
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
     public readonly representations?: Representation[];
+    public readonly mimeType?: string; // part of RepresentationBase - move this later
 
     /**
      * To add: par, subsegmentStartsWithSAP, initializationSetRef, initializationPrincipal,
@@ -61,5 +70,26 @@ export default class AdaptationSet extends ModelBase {
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this._init();
+    }
+
+    public get streamType(): StreamType {
+        const firstRepresentation = this.representations?.[0];
+        const contentType = this.contentType?.toLowerCase();
+        const mimeType = this.mimeType?.toLowerCase() ?? firstRepresentation?.mimeType?.toLowerCase();
+
+        if (contentType?.startsWith('video') || mimeType?.startsWith('video')) {
+            // The video stream could be muxed. Figure this out later.
+            return StreamType.VIDEO;
+        }
+
+        if (contentType?.startsWith('audio') || mimeType?.startsWith('audio')) {
+            return StreamType.AUDIO;
+        }
+
+        if (contentType?.startsWith('text') || mimeType?.startsWith('text')) {
+            return StreamType.TEXT;
+        }
+
+        return StreamType.UNKNOWN;
     }
 }

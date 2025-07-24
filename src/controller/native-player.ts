@@ -11,6 +11,12 @@ export enum NativePlayerEvent {
     ERROR        = 'error',
 }
 
+export enum MediaSourceReadyState {
+    CLOSED = 'closed',
+    OPEN   = 'open',
+    ENDED  = 'ended',
+}
+
 export default class NativePlayer extends EventEmitter {
     private _mediaElement: MediaElement = null;
     private _mediaSource: MediaSource | null = null;
@@ -41,6 +47,10 @@ export default class NativePlayer extends EventEmitter {
         }
 
         this.removeAllListeners();
+    }
+
+    public get readyState(): MediaSourceReadyState {
+        return (this._mediaSource?.readyState as MediaSourceReadyState) ?? MediaSourceReadyState.CLOSED;
     }
 
     private _createPlayer() {

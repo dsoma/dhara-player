@@ -2,6 +2,7 @@ import Mpd from './mpd';
 import log from 'loglevel';
 import type AdaptationSet from './adaptation-set';
 import type Representation from './representation';
+import { StreamType } from './adaptation-set';
 
 export enum MediaType {
     AUDIO = 'audio',
@@ -24,7 +25,22 @@ export default class Media {
             return this._type;
         }
 
-        this._type = this._mpd?.periods?.[0]?.type ?? MediaType.UNKNOWN;
+        const adaptationSets = this.getAdaptationSets() ?? [];
+        let hasAudio = false;
+
+        for (const adaptationSet of adaptationSets) {
+            const streamType = adaptationSet.streamType;
+            if (streamType === StreamType.AUDIO) {
+                hasAudio = true;
+                continue;
+            }
+            if (streamType === StreamType.VIDEO || streamType === StreamType.MUXED) {
+                this._type = MediaType.VIDEO;
+                return this._type;
+            }
+        }
+
+        this._type = hasAudio ? MediaType.AUDIO : MediaType.UNKNOWN;
         return this._type;
     }
 
