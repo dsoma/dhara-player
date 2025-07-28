@@ -42,7 +42,10 @@ export default class StreamingEngine extends EventEmitter {
                 continue;
             }
 
-            this._streamers.push( StreamerFactory.create(streamType, this._media, this._nativePlayer) );
+            const streamer = StreamerFactory.create(streamType, this._media, adaptationSet, this._nativePlayer);
+            if (streamer.initialize()) {
+                this._streamers.push(streamer);
+            }
         }
     }
 }
