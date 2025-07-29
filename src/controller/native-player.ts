@@ -53,6 +53,10 @@ export default class NativePlayer extends EventEmitter {
         return (this._mediaSource?.readyState as MediaSourceReadyState) ?? MediaSourceReadyState.CLOSED;
     }
 
+    public get mediaSource(): MediaSource | null {
+        return this._mediaSource;
+    }
+
     private _createPlayer() {
         this._mediaElement = document.createElement(this._type) as MediaElement;
         if (!this._mediaElement) {

@@ -54,6 +54,9 @@ export default class AdaptationSet extends ModelBase {
     public readonly segmentTemplate?: SegmentTemplate;
     public readonly representations?: Representation[];
     public readonly mimeType?: string; // part of RepresentationBase - move this later
+    public readonly codecs?: string; // part of RepresentationBase - move this later
+
+    private readonly _firstRepresentation?: Representation | null;
 
     /**
      * To add: par, subsegmentStartsWithSAP, initializationSetRef, initializationPrincipal,
@@ -68,14 +71,14 @@ export default class AdaptationSet extends ModelBase {
 
         this.representations = this._buildArray(Representation, 'Representation');
         this.baseURLs = this._buildArray(URL, 'BaseURL');
+        this._firstRepresentation = this.representations?.[0] ?? null;
 
         this._init();
     }
 
     public get streamType(): StreamType {
-        const firstRepresentation = this.representations?.[0];
         const contentType = this.contentType?.toLowerCase();
-        const mimeType = this.mimeType?.toLowerCase() ?? firstRepresentation?.mimeType?.toLowerCase();
+        const mimeType = this.getMimeType();
 
         if (contentType?.startsWith('video') || mimeType?.startsWith('video')) {
             // The video stream could be muxed. Figure this out later.
@@ -91,5 +94,13 @@ export default class AdaptationSet extends ModelBase {
         }
 
         return StreamType.UNKNOWN;
+    }
+
+    public getMimeType(): string {
+        return this.mimeType?.toLowerCase() ?? this._firstRepresentation?.mimeType?.toLowerCase() ?? '';
+    }
+
+    public getCodecs(): string {
+        return this.codecs ?? this._firstRepresentation?.codecs ?? '';
     }
 }
