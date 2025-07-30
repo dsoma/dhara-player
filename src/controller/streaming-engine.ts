@@ -5,6 +5,7 @@ import { MediaSourceReadyState, NativePlayerEvent } from './native-player';
 import type Streamer from './streamers/streamer';
 import * as StreamerFactory from './streamers/streamer-factory';
 import { StreamType } from '../model/adaptation-set';
+import { toTitleCase } from '../utils';
 
 export enum StreamingEngineEvent {
     ERROR = 'error',
@@ -47,5 +48,30 @@ export default class StreamingEngine extends EventEmitter {
                 this._streamers.push(streamer);
             }
         }
+
+        for (const event of Object.values(NativePlayerEvent)) {
+            this._nativePlayer.on(event, (...args: any[]) => {
+                try {
+                    const methodName = `_on${toTitleCase(event)}`;
+                    (this as any)[methodName](...args);
+                } catch { /* ignore */ }
+            });
+        }
+    }
+
+    private _sendEventToStreamers(methodName: string, ...args: any[]) {
+        for (const streamer of this._streamers) {
+            try {
+                (streamer as any)[methodName](...args);
+            } catch { /* ignore */ }
+        }
+    }
+
+    private _onPlay() {
+        this._sendEventToStreamers('onPlay');
+    }
+
+    private _onPlaying() {
+        this._sendEventToStreamers('onPlaying');
     }
 }

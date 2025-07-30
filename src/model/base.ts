@@ -1,5 +1,6 @@
 import { Duration, Descriptor } from './data-types';
 import { ATTR_PREFIX } from '../constants';
+import { toCamelCase } from '../utils';
 
 export enum DashTypes {
     Duration = 0,
@@ -84,7 +85,7 @@ export default class ModelBase {
             return;
         }
 
-        const memberName = className.charAt(0).toLowerCase() + className.slice(1);
+        const memberName = toCamelCase(className);
         (this as any)[memberName] = new classDef(this.json[className]);
     }
 
