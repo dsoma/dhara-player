@@ -3,6 +3,7 @@ import log from 'loglevel';
 import type AdaptationSet from './adaptation-set';
 import type Representation from './representation';
 import { StreamType } from './adaptation-set';
+import type Period from './period';
 
 export enum MediaType {
     AUDIO = 'audio',
@@ -48,11 +49,15 @@ export default class Media {
         this._mpd = null;
     }
 
+    public get periods(): Period[] {
+        return this._mpd?.periods ?? [];
+    }
+
     public getAdaptationSets(periodIndex: number = 0): AdaptationSet[] {
         return this._mpd?.periods?.[periodIndex]?.adaptationSets ?? [];
     }
 
-    public getRepresentations(periodIndex: number = 0): Representation[] {
-        return this._mpd?.periods?.[periodIndex]?.adaptationSets?.[0]?.representations ?? [];
+    public getRepresentations(periodIndex: number = 0, adaptationSetIndex: number = 0): Representation[] {
+        return this.getAdaptationSets(periodIndex)?.[adaptationSetIndex]?.representations ?? [];
     }
 }

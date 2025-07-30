@@ -52,8 +52,13 @@ export default class StreamingEngine extends EventEmitter {
         for (const event of Object.values(NativePlayerEvent)) {
             this._nativePlayer.on(event, (...args: any[]) => {
                 try {
-                    const methodName = `_on${toTitleCase(event)}`;
-                    (this as any)[methodName](...args);
+                    const handlerName = `on${toTitleCase(event)}`;
+                    const methodName  = `_${handlerName}`;
+                    if ((this as any)[methodName]) {
+                        (this as any)[methodName](...args);
+                    } else {
+                        this._sendEventToStreamers(handlerName, ...args);
+                    }
                 } catch { /* ignore */ }
             });
         }
@@ -65,13 +70,5 @@ export default class StreamingEngine extends EventEmitter {
                 (streamer as any)[methodName](...args);
             } catch { /* ignore */ }
         }
-    }
-
-    private _onPlay() {
-        this._sendEventToStreamers('onPlay');
-    }
-
-    private _onPlaying() {
-        this._sendEventToStreamers('onPlaying');
     }
 }
