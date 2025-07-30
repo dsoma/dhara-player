@@ -34,6 +34,7 @@ export default class StreamingEngine extends EventEmitter {
             streamer.destroy();
         }
         this._streamers = [];
+        this._unbindNativePlayerEvents();
     }
 
     private _initialize() {
@@ -49,19 +50,31 @@ export default class StreamingEngine extends EventEmitter {
             }
         }
 
+        this._bindNativePlayerEvents();
+    }
+
+    private _bindNativePlayerEvents() {
         for (const event of Object.values(NativePlayerEvent)) {
-            this._nativePlayer.on(event, (...args: any[]) => {
-                try {
-                    const handlerName = `on${toTitleCase(event)}`;
-                    const methodName  = `_${handlerName}`;
-                    if ((this as any)[methodName]) {
-                        (this as any)[methodName](...args);
-                    } else {
-                        this._sendEventToStreamers(handlerName, ...args);
-                    }
-                } catch { /* ignore */ }
-            });
+            this._nativePlayer.on(event, this._onNativePlayerEvent.bind(this, event));
         }
+    }
+
+    private _unbindNativePlayerEvents() {
+        for (const event of Object.values(NativePlayerEvent)) {
+            this._nativePlayer.off(event, this._onNativePlayerEvent.bind(this, event));
+        }
+    }
+
+    private _onNativePlayerEvent(event: NativePlayerEvent, ...args: any[]) {
+        try {
+            const handlerName = `on${toTitleCase(event)}`;
+            const methodName  = `_${handlerName}`;
+            if ((this as any)[methodName]) {
+                (this as any)[methodName](...args);
+            } else {
+                this._sendEventToStreamers(handlerName, ...args);
+            }
+        } catch { /* ignore */ }
     }
 
     private _sendEventToStreamers(methodName: string, ...args: any[]) {
