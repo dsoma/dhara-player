@@ -47,4 +47,8 @@ export default class Streamer {
         this._buffer?.destroy();
         this._buffer = null;
     }
+
+    public onPlay() {
+        log.info(`[Streamer] onPlay`);
+    }
 }

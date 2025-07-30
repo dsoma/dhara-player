@@ -5,10 +5,17 @@ import log from 'loglevel';
 type MediaElement = HTMLAudioElement | HTMLVideoElement | null;
 
 export enum NativePlayerEvent {
-    SOURCE_OPEN  = 'sourceopen',
+    ERROR        = 'error',
+    ENDED        = 'ended',
+    PAUSE        = 'pause',
+    PLAY         = 'play',
+    PLAYING      = 'playing',
     SOURCE_CLOSE = 'sourceclose',
     SOURCE_ENDED = 'sourceended',
-    ERROR        = 'error',
+    SOURCE_OPEN  = 'sourceopen',
+    TIMEUPDATE   = 'timeupdate',
+    VOLUMECHANGE = 'volumechange',
+    WAITING      = 'waiting',
 }
 
 export enum MediaSourceReadyState {
@@ -73,6 +80,8 @@ export default class NativePlayer extends EventEmitter {
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
         }
+
+        this._bindEvents();
     }
 
     private _createMediaSource() {
@@ -122,5 +131,28 @@ export default class NativePlayer extends EventEmitter {
     private _onError(errMsg: string, error: unknown = null) {
         log.error(errMsg, error);
         this.emit(NativePlayerEvent.ERROR, errMsg);
+    }
+
+    private _bindEvents() {
+        if (!this._mediaElement) {
+            return;
+        }
+
+        const events = [
+            NativePlayerEvent.ERROR,
+            NativePlayerEvent.ENDED,
+            NativePlayerEvent.PAUSE,
+            NativePlayerEvent.PLAY,
+            NativePlayerEvent.PLAYING,
+            NativePlayerEvent.TIMEUPDATE,
+            NativePlayerEvent.VOLUMECHANGE,
+            NativePlayerEvent.WAITING,
+        ];
+
+        for (const event of events) {
+            this._mediaElement.addEventListener(event, (event: Event, ...args: any[]) => {
+                this.emit(event.type as NativePlayerEvent, ...args);
+            });
+        }
     }
 }
