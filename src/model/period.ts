@@ -4,6 +4,10 @@ import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
 import AdaptationSet from './adaptation-set';
+import type ISegmentContainer from './segment-container';
+import type { ISegmentResolveInfo } from './segment-container';
+import type Segment from './segment';
+import * as SegmentResolver from './segment-resolver';
 
 const typeMap = {
     start: DashTypes.Duration,
@@ -15,17 +19,20 @@ const typeMap = {
  * This class represents the Period element in DASH.
  * @see ISO/IEC 23009-1:2014, 5.3.2 Period element
  */
-export default class Period extends ModelBase {
+export default class Period extends ModelBase implements ISegmentContainer {
     public readonly id?: string;
     public readonly start?: Duration;
     public readonly duration?: Duration;
     public readonly bitstreamSwitching?: boolean;
-    public readonly baseURLs?: URL[];
+    public readonly baseUrls?: URL[];
     public readonly segmentBase?: SegmentBase;
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
     public readonly assetIdentifier?: Descriptor;
-    public readonly adaptationSets?: AdaptationSet[];
+    public readonly adaptationSets: AdaptationSet[];
+
+    public initSegment?: Segment;
+    public basePath?: URL;
 
     /**
      * To add: EventStream, ServiceDescription, ContentProtection, Subset,
@@ -43,8 +50,22 @@ export default class Period extends ModelBase {
         this._create(Descriptor, 'AssetIdentifier');
 
         this.adaptationSets = this._buildArray(AdaptationSet, 'AdaptationSet');
-        this.baseURLs = this._buildArray(URL, 'BaseURL');
+        this.baseUrls = this._buildArray(URL, 'BaseURL');
 
         this._init();
+    }
+
+    public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        const { adaptationSetIndex } = segmentResolveInfo;
+        if (adaptationSetIndex < 0 || adaptationSetIndex >= this.adaptationSets.length) {
+            return null;
+        }
+
+        const adaptationSet = this.adaptationSets[adaptationSetIndex];
+        let segment = adaptationSet?.getSegment(segmentResolveInfo);
+        if (!segment) {
+            segment = SegmentResolver.getSegment(this, segmentResolveInfo);
+        }
+        return segment;
     }
 }

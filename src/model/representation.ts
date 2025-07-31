@@ -1,6 +1,12 @@
 import RepBase from './rep-base';
 import { DashTypes } from './base';
 import SegmentTemplate from './segment-template';
+import type SegmentBase from './segment-base';
+import type SegmentList from './segment-list';
+import type ISegmentContainer from './segment-container';
+import type { ISegmentResolveInfo } from './segment-container';
+import type Segment from './segment';
+import * as SegmentResolver from './segment-resolver';
 
 const typeMap = {
     qualityRanking: DashTypes.Number,
@@ -11,7 +17,7 @@ const typeMap = {
  * Representation element
  * @see ISO/IEC 23009-1:2022, 5.3.5
  */
-export default class Representation extends RepBase {
+export default class Representation extends RepBase implements ISegmentContainer {
     public readonly id: string;
     public readonly qualityRanking?: number;
     public readonly dependencyId?: string;
@@ -21,6 +27,11 @@ export default class Representation extends RepBase {
     public readonly bandwidth: number;
     public readonly baseUrls?: URL[];
     public readonly segmentTemplate?: SegmentTemplate;
+    public readonly segmentBase?: SegmentBase;
+    public readonly segmentList?: SegmentList;
+
+    public initSegment?: Segment;
+    public basePath?: URL;
 
     /**
      * To add: ExtendedBandwidth, SubRepresentation,
@@ -36,5 +47,9 @@ export default class Representation extends RepBase {
         this._create(SegmentTemplate, 'SegmentTemplate');
 
         this._init();
+    }
+
+    public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        return SegmentResolver.getSegment(this, segmentResolveInfo);
     }
 }

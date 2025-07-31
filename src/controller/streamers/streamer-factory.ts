@@ -8,16 +8,20 @@ import AudioStreamer from './audio-streamer';
 import TextStreamer  from './text-streamer';
 import MuxedStreamer from './muxed-streamer';
 
-export function create(streamType: StreamType, media: Media, adaptationSet: AdaptationSet, nativePlayer: NativePlayer): Streamer {
+export function create(streamType: StreamType,
+                       media: Media,
+                       adaptationSet: AdaptationSet,
+                       nativePlayer: NativePlayer,
+                       adaptationSetIndex: number): Streamer {
     switch (streamType) {
         case StreamType.VIDEO:
-            return new VideoStreamer(media, adaptationSet, nativePlayer);
+            return new VideoStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.AUDIO:
-            return new AudioStreamer(media, adaptationSet, nativePlayer);
+            return new AudioStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.TEXT:
-            return new TextStreamer(media, adaptationSet, nativePlayer);
+            return new TextStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.MUXED:
-            return new MuxedStreamer(media, adaptationSet, nativePlayer);
+            return new MuxedStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
         default:
             throw new Error(`Unsupported stream type: ${streamType}`);
     }
