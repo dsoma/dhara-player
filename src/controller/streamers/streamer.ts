@@ -69,12 +69,12 @@ export default class Streamer {
     }
 
     public onPlay() {
-        log.info(`[${this._name}] onPlay`);
+        log.debug(`[${this._name}] onPlay`);
         this.start();
     }
 
     public onPause() {
-        log.info(`[${this._name}] onPause`);
+        log.debug(`[${this._name}] onPause`);
         this.stop();
     }
 

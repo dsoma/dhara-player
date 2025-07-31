@@ -1,4 +1,5 @@
-import ModelBase, { DashTypes } from './base';
+import RepBase from './rep-base';
+import { DashTypes } from './base';
 
 const typeMap = {
     qualityRanking: DashTypes.Number,
@@ -9,7 +10,7 @@ const typeMap = {
  * Representation element
  * @see ISO/IEC 23009-1:2022, 5.3.5
  */
-export default class Representation extends ModelBase {
+export default class Representation extends RepBase {
     public readonly id: string;
     public readonly qualityRanking?: number;
     public readonly dependencyId?: string;
@@ -17,8 +18,6 @@ export default class Representation extends ModelBase {
     public readonly associationType?: string;
     public readonly mediaStreamStructureId?: string;
     public readonly bandwidth: number;
-    public readonly mimeType?: string;
-    public readonly codecs?: string;
 
     /**
      * To add: BaseURL, ExtendedBandwidth, SubRepresentation,
