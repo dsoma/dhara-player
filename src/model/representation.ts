@@ -1,5 +1,6 @@
 import RepBase from './rep-base';
 import { DashTypes } from './base';
+import SegmentTemplate from './segment-template';
 
 const typeMap = {
     qualityRanking: DashTypes.Number,
@@ -18,16 +19,22 @@ export default class Representation extends RepBase {
     public readonly associationType?: string;
     public readonly mediaStreamStructureId?: string;
     public readonly bandwidth: number;
+    public readonly baseUrls?: URL[];
+    public readonly segmentTemplate?: SegmentTemplate;
 
     /**
-     * To add: BaseURL, ExtendedBandwidth, SubRepresentation,
-     * SegmentBase, SegmentList, SegmentTemplate,
+     * To add: ExtendedBandwidth, SubRepresentation,
+     * SegmentBase, SegmentList,
      */
 
     constructor(json: Record<string, any>) {
         super(json, typeMap);
         this.id ??= '';
         this.bandwidth ??= 0;
+
+        this.baseUrls = this._buildArray(URL, 'BaseURL');
+        this._create(SegmentTemplate, 'SegmentTemplate');
+
         this._init();
     }
 }
