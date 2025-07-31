@@ -2,7 +2,7 @@ import type Media from '../../model/media';
 import type AdaptationSet from '../../model/adaptation-set';
 import type Representation from '../../model/representation';
 import type Period from '../../model/period';
-import type SegmentBase from '../../model/segment-base';
+import type Segment from '../../model/segment';
 import type NativePlayer from '../native-player';
 import Buffer from './buffer';
 import log from 'loglevel';
@@ -10,8 +10,9 @@ import log from 'loglevel';
 class StreamerState {
     public curRep: Representation | null = null;
     public curPeriod: Period | null = null;
-    public curSegment: SegmentBase | null = null;
+    public curSegment: Segment | null = null;
     public curPeriodIndex: number = 0;
+    public curAdaptationSetIndex: number = 0;
     public curRepIndex: number = 0;
     public curSegmentIndex: number = 0;
 }
@@ -32,10 +33,12 @@ export default class Streamer {
     protected _timer: NodeJS.Timeout | null = null;
     protected _name: string = this.constructor.name;
 
-    constructor(media: Media, adaptationSet: AdaptationSet, nativePlayer: NativePlayer) {
+    constructor(media: Media, adaptationSet: AdaptationSet,
+                nativePlayer: NativePlayer, adaptationSetIndex: number) {
         this._media = media;
         this._nativePlayer = nativePlayer;
         this._adaptationSet = adaptationSet;
+        this._state.curAdaptationSetIndex = adaptationSetIndex;
     }
 
     public initialize(): boolean {
@@ -92,6 +95,46 @@ export default class Streamer {
     }
 
     protected _process() {
-        //
+        // At present, hard code the period and representation indices to 0.
+        const rep = this._getRepresentation();
+        if (!rep) {
+            return;
+        }
+
+        const segment = this._getNextSegment();
+        if (!segment) {
+            return;
+        }
+
+        if (this._shouldLoadSegment(segment)) {
+            this._loadSegment(segment);
+        }
+    }
+
+    protected _getRepresentation(): Representation | null {
+        this._state.curRepIndex = 0;
+        return this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
+    }
+
+    protected _getNextSegment(): Segment | null {
+        const rep = this._getRepresentation();
+        if (!rep) {
+            return null;
+        }
+
+        return this._media.getSegment({
+            periodIndex: this._state.curPeriodIndex,
+            adaptationSetIndex: this._state.curAdaptationSetIndex,
+            representationIndex: this._state.curRepIndex,
+            segmentIndex: ++this._state.curSegmentIndex
+        });
+    }
+
+    protected _shouldLoadSegment(segment: Segment): boolean {
+        return segment.seqNum === this._state.curSegmentIndex;
+    }
+
+    protected _loadSegment(segment: Segment) {
+        log.debug(`[${this._name}] loadSegment: ${segment.url}`);
     }
 }

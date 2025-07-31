@@ -4,6 +4,9 @@ import type AdaptationSet from './adaptation-set';
 import type Representation from './representation';
 import { StreamType } from './adaptation-set';
 import type Period from './period';
+import { getUrlBasePath } from '../utils';
+import type Segment from './segment';
+import type { ISegmentResolveInfo } from './segment-container';
 
 export enum MediaType {
     AUDIO = 'audio',
@@ -13,12 +16,15 @@ export enum MediaType {
 
 export default class Media {
     public srcUrl?: URL;
+    public srcBasePath?: URL;
+
     private _mpd: Mpd | null = null;
     private _type: MediaType = MediaType.UNKNOWN;
 
     public build(metadata: Record<string, any>) {
+        this.srcBasePath = new URL(getUrlBasePath(this.srcUrl));
         this._mpd = new Mpd(metadata);
-        log.debug(this._mpd);
+        log.debug(this);
     }
 
     public get type(): MediaType {
@@ -59,5 +65,16 @@ export default class Media {
 
     public getRepresentations(periodIndex: number = 0, adaptationSetIndex: number = 0): Representation[] {
         return this.getAdaptationSets(periodIndex)?.[adaptationSetIndex]?.representations ?? [];
+    }
+
+    public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        const { periodIndex } = segmentResolveInfo;
+        if (!this._mpd || periodIndex < 0 || periodIndex >= this.periods.length) {
+            return null;
+        }
+
+        segmentResolveInfo.basePath = this.srcBasePath;
+        const period = this.periods[periodIndex];
+        return period?.getSegment(segmentResolveInfo) ?? null;
     }
 }

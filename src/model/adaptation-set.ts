@@ -4,6 +4,10 @@ import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
 import Representation from './representation';
+import type ISegmentContainer from './segment-container';
+import type { ISegmentResolveInfo } from './segment-container';
+import type Segment from './segment';
+import * as SegmentResolver from './segment-resolver';
 
 const typeMap = {
     id: DashTypes.Number,
@@ -33,7 +37,7 @@ export enum StreamType {
  * AdaptationSet element
  * @see ISO/IEC 23009-1:2022, 5.3.3
  */
-export default class AdaptationSet extends RepBase {
+export default class AdaptationSet extends RepBase implements ISegmentContainer {
     public readonly id?: number;
     public readonly group?: number;
     public readonly lang?: string;
@@ -49,11 +53,14 @@ export default class AdaptationSet extends RepBase {
     public readonly segmentAlignment?: boolean;
     public readonly subsegmentAlignment?: boolean;
     public readonly bitstreamSwitching?: boolean;
-    public readonly baseURLs?: URL[];
+    public readonly baseUrls?: URL[];
     public readonly segmentBase?: SegmentBase;
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
-    public readonly representations?: Representation[];
+    public readonly representations: Representation[];
+
+    public initSegment?: Segment;
+    public basePath?: URL;
 
     private readonly _firstRepresentation?: Representation | null;
 
@@ -69,8 +76,8 @@ export default class AdaptationSet extends RepBase {
         this._create(SegmentTemplate, 'SegmentTemplate');
 
         this.representations = this._buildArray(Representation, 'Representation');
-        this.baseURLs = this._buildArray(URL, 'BaseURL');
-        this._firstRepresentation = this.representations?.[0] ?? null;
+        this.baseUrls = this._buildArray(URL, 'BaseURL');
+        this._firstRepresentation = this.representations[0] ?? null;
 
         this._init();
     }
@@ -101,5 +108,19 @@ export default class AdaptationSet extends RepBase {
 
     public getCodecs(): string {
         return this.codecs ?? this._firstRepresentation?.codecs ?? '';
+    }
+
+    public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        const { representationIndex } = segmentResolveInfo;
+        if (representationIndex < 0 || representationIndex >= this.representations.length) {
+            return null;
+        }
+
+        const representation = this.representations[representationIndex];
+        let segment = representation?.getSegment(segmentResolveInfo);
+        if (!segment) {
+            segment = SegmentResolver.getSegment(this, segmentResolveInfo);
+        }
+        return segment;
     }
 }

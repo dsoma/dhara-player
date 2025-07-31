@@ -38,13 +38,16 @@ export default class StreamingEngine extends EventEmitter {
     }
 
     private _initialize() {
-        for (const adaptationSet of this._media.getAdaptationSets()) {
+        const entries = this._media.getAdaptationSets().entries();
+        for (const [adaptationSetIndex, adaptationSet] of entries) {
             const streamType = adaptationSet.streamType;
             if (streamType === StreamType.UNKNOWN) {
                 continue;
             }
 
-            const streamer = StreamerFactory.create(streamType, this._media, adaptationSet, this._nativePlayer);
+            const streamer = StreamerFactory.create(streamType, this._media,
+                                                    adaptationSet, this._nativePlayer,
+                                                    adaptationSetIndex);
             if (streamer.initialize()) {
                 this._streamers.push(streamer);
             }

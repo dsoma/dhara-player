@@ -23,5 +23,7 @@ export default class MultiSegmentBase extends SegmentBase {
 
     constructor(json: Record<string, any>, inputTypeMap: Record<string, DashTypes>) {
         super(json, { ...inputTypeMap, ...typeMap });
+        this.startNumber ??= 1; // fix it later
+        this.endNumber ??= this.startNumber; // fix it later
     }
 }
