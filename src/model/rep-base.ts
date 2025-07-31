@@ -46,7 +46,5 @@ export default class RepBase extends ModelBase {
 
     constructor(json: Record<string, any>, inputTypeMap: Record<string, DashTypes>) {
         super(json, { ...inputTypeMap, ...typeMap });
-        this.scanType ??= 'progressive';
-        this.selectionPriority ??= 1;
     }
 }
