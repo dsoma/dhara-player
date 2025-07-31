@@ -78,14 +78,14 @@ export default class ModelBase {
         return arrayMember;
     }
 
-    protected _create(classDef: any, elementName: string) {
+    protected _create(classDef: any, elementName: string, property?: string) {
         const className = elementName ?? classDef.name;
 
         if (!this.json?.[className]) {
             return;
         }
 
-        const memberName = toCamelCase(className);
+        const memberName = property ?? toCamelCase(className);
         (this as any)[memberName] = new classDef(this.json[className]);
     }
 
