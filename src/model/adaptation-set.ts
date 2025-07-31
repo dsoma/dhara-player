@@ -1,4 +1,5 @@
-import ModelBase, { DashTypes } from './base';
+import { DashTypes } from './base';
+import RepBase from './rep-base';
 import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
@@ -32,7 +33,7 @@ export enum StreamType {
  * AdaptationSet element
  * @see ISO/IEC 23009-1:2022, 5.3.3
  */
-export default class AdaptationSet extends ModelBase {
+export default class AdaptationSet extends RepBase {
     public readonly id?: number;
     public readonly group?: number;
     public readonly lang?: string;
@@ -53,8 +54,6 @@ export default class AdaptationSet extends ModelBase {
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
     public readonly representations?: Representation[];
-    public readonly mimeType?: string; // part of RepresentationBase - move this later
-    public readonly codecs?: string; // part of RepresentationBase - move this later
 
     private readonly _firstRepresentation?: Representation | null;
 
