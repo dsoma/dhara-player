@@ -27,7 +27,7 @@ const PROCESS_TICK = 20; // in milliseconds
 export default class Streamer {
     protected readonly _media: Media;
     protected readonly _nativePlayer: NativePlayer;
-    protected readonly _adaptationSet: AdaptationSet;
+    protected _adaptationSet: AdaptationSet;
     protected _buffer: Buffer | null = null;
     protected _state: StreamerState = new StreamerState();
     protected _timer: NodeJS.Timeout | null = null;
@@ -60,8 +60,12 @@ export default class Streamer {
             return false;
         }
 
+        this._state.curPeriodIndex = 0;
         this._state.curPeriod = this._media.periods?.[this._state.curPeriodIndex] ?? null;
-        this._state.curRep = this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
+        this._adaptationSet
+        = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
+        this._state.curRep = this._adaptationSet?.representations?.[this._state.curRepIndex] ?? null;
+        this._state.curSegmentNum = this._state.curRep?.segStartNumber ?? 0;
 
         return true;
     }
@@ -106,7 +110,7 @@ export default class Streamer {
             return;
         }
 
-        if (this._shouldLoadSegment()) {
+        if (this._shouldLoadSegment(segment)) {
             this._loadSegment(segment);
         }
     }
@@ -123,15 +127,19 @@ export default class Streamer {
         }
 
         return this._media.getSegment({
-            periodIndex: 1, // this._state.curPeriodIndex,
+            periodIndex: this._state.curPeriodIndex,
             adaptationSetIndex: this._state.curAdaptationSetIndex,
             representationIndex: this._state.curRepIndex,
-            segmentNum: ++this._state.curSegmentNum
+            segmentNum: this._state.curSegmentNum++
         });
     }
 
-    protected _shouldLoadSegment(/* segment: Segment */): boolean {
-        return true; //segment.seqNum === this._state.curSegmentNum;
+    protected _shouldLoadSegment(segment: Segment): boolean {
+        if (!segment || !this._state.curRep) {
+            return false;
+        }
+        return segment.seqNum >= this._state.curRep.segStartNumber &&
+               segment.seqNum <= this._state.curRep.segEndNumber;
     }
 
     protected _loadSegment(segment: Segment) {

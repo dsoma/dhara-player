@@ -17,7 +17,7 @@ const typeMap = {
 };
 
 export enum PresentationType {
-    VOD = 'static',
+    VOD  = 'static',
     LIVE = 'dynamic',
 }
 
@@ -63,11 +63,32 @@ export default class Mpd extends ModelBase {
         this.minBufferTime ??= new Duration('');
 
         this._init();
+    }
 
-        /**
-         * Make sure period timing info are all set properly.
-         * If (i) @start attribute is absent, and (ii) the Period element is the first in the MPD, and (iii) the
-         * MPD@type is 'static′, then the PeriodStart time shall be set to zero.
-         */
+    protected _init() {
+        super._init();
+        this._computePeriodTiming();
+    }
+
+    private _computePeriodTiming() {
+        if (!this.periods.length) {
+            return;
+        }
+
+        // If period start is absent, and MPD is VOD, then set the first period start to zero.
+        if (!this.periods[0].start && this.type === PresentationType.VOD) {
+            this.periods[0].start = new Duration('PT0S');
+        }
+
+        let elapsedTime = 0;
+
+        for (const period of this.periods) {
+            if (!period.start) {
+                period.start = new Duration('', new Date(elapsedTime * 1000));
+            }
+            elapsedTime += period.duration?.seconds ?? 0;
+            period.endTimeInSeconds = elapsedTime;
+            period.updateTiming();
+        }
     }
 }

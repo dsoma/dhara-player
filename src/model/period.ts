@@ -1,5 +1,5 @@
 import ModelBase, { DashTypes } from './base';
-import { Descriptor, Duration, type IPeriodInfo } from './data-types';
+import { Descriptor, type Duration, type IPeriodInfo } from './data-types';
 import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
@@ -32,6 +32,7 @@ export default class Period extends ModelBase implements ISegmentContainer {
     public readonly adaptationSets: AdaptationSet[];
 
     public initSegment?: Segment;
+    public endTimeInSeconds?: number;
 
     /**
      * To add: EventStream, ServiceDescription, ContentProtection, Subset,
@@ -54,25 +55,16 @@ export default class Period extends ModelBase implements ISegmentContainer {
         this._init();
     }
 
-    protected _init() {
-        super._init();
-
-        // This should be done in MPD.
-        if (!this.start && this.id === '0') {
-            this.start = new Duration('PT0S');
-        }
-
+    public updateTiming() {
         const startTime = this.start?.seconds ?? 0;
         const duration  = this.duration?.seconds ?? 0;
-        const endTime   = startTime + duration;
-
+        const endTime   = this.endTimeInSeconds ?? startTime + duration;
         const periodInfo: IPeriodInfo = {
             startTime,
             duration,
             endTime,
             id: this.id
         };
-
         this.adaptationSets.forEach(adaptationSet => {
             adaptationSet.periodInfo = periodInfo;
         });

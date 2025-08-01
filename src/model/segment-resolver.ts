@@ -39,23 +39,25 @@ function fromTemplate(segmentContainer: ISegmentContainer,
     // Find the position within the segment list:
     const start = template.startNumber ?? 1;
     const end   = template.endNumber ?? start;
-    const pos   = segmentNum - 1 + start;
+    const pos   = segmentNum;
     if (pos < start || pos > end) {
         return null;
     }
 
     // Find start and end times:
     // If duration is absent, then we must use SegmentTimeline. (fix it later)
+    const periodStart = periodInfo?.startTime ?? 0;
+    const periodEnd   = periodInfo?.endTime ?? 0;
     let duration  = template.durationSecs ?? 0;
-    const startTime = (pos - start) * duration;
+    const startTime = periodStart + (pos - start) * duration;
     let endTime   = startTime + duration;
 
     if (periodInfo) {
-        if (startTime < periodInfo.startTime || startTime > periodInfo.endTime) {
+        if (startTime < periodStart || startTime > periodEnd) {
             return null;
         }
-        if (endTime > periodInfo.endTime) {
-            endTime = periodInfo.endTime;
+        if (endTime > periodEnd) {
+            endTime = periodEnd;
             duration = endTime - startTime;
         }
     }
