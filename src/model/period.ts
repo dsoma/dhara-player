@@ -1,5 +1,5 @@
 import ModelBase, { DashTypes } from './base';
-import { Descriptor, type Duration } from './data-types';
+import { Descriptor, type Duration, type IPeriodInfo } from './data-types';
 import SegmentBase from './segment-base';
 import SegmentList from './segment-list';
 import SegmentTemplate from './segment-template';
@@ -21,7 +21,7 @@ const typeMap = {
  */
 export default class Period extends ModelBase implements ISegmentContainer {
     public readonly id?: string;
-    public readonly start?: Duration;
+    public start?: Duration;
     public readonly duration?: Duration;
     public readonly bitstreamSwitching?: boolean;
     public readonly baseUrls?: URL[];
@@ -32,7 +32,7 @@ export default class Period extends ModelBase implements ISegmentContainer {
     public readonly adaptationSets: AdaptationSet[];
 
     public initSegment?: Segment;
-    public basePath?: URL;
+    public endTimeInSeconds?: number;
 
     /**
      * To add: EventStream, ServiceDescription, ContentProtection, Subset,
@@ -53,6 +53,21 @@ export default class Period extends ModelBase implements ISegmentContainer {
         this.baseUrls = this._buildArray(URL, 'BaseURL');
 
         this._init();
+    }
+
+    public updateTiming() {
+        const startTime = this.start?.seconds ?? 0;
+        const duration  = this.duration?.seconds ?? 0;
+        const endTime   = this.endTimeInSeconds ?? startTime + duration;
+        const periodInfo: IPeriodInfo = {
+            startTime,
+            duration,
+            endTime,
+            id: this.id
+        };
+        this.adaptationSets.forEach(adaptationSet => {
+            adaptationSet.periodInfo = periodInfo;
+        });
     }
 
     public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {

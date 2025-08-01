@@ -16,8 +16,8 @@ export class Duration {
     public readonly seconds: number;
     public readonly durationDate: Date;
 
-    constructor(private readonly _rawValue: string) {
-        this.durationDate = this._parse();
+    constructor(private readonly _rawValue: string, durationDate?: Date) {
+        this.durationDate = durationDate ?? this._parse();
         this.milliseconds = this.durationDate.getTime();
         this.seconds = this.milliseconds / MILLISECONDS_PER_SECOND;
     }
@@ -98,4 +98,11 @@ export class Duration {
 export class Descriptor {
     constructor(public value: string) {
     }
+}
+
+export interface IPeriodInfo {
+    startTime: number; // in seconds
+    duration: number; // in seconds
+    endTime: number; // in seconds
+    id?: string;
 }

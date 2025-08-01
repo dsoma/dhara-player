@@ -14,7 +14,7 @@ class StreamerState {
     public curPeriodIndex: number = 0;
     public curAdaptationSetIndex: number = 0;
     public curRepIndex: number = 0;
-    public curSegmentIndex: number = 0;
+    public curSegmentNum: number = 0;
 }
 
 const PROCESS_TICK = 20; // in milliseconds
@@ -27,7 +27,7 @@ const PROCESS_TICK = 20; // in milliseconds
 export default class Streamer {
     protected readonly _media: Media;
     protected readonly _nativePlayer: NativePlayer;
-    protected readonly _adaptationSet: AdaptationSet;
+    protected _adaptationSet: AdaptationSet;
     protected _buffer: Buffer | null = null;
     protected _state: StreamerState = new StreamerState();
     protected _timer: NodeJS.Timeout | null = null;
@@ -60,8 +60,12 @@ export default class Streamer {
             return false;
         }
 
+        this._state.curPeriodIndex = 0;
         this._state.curPeriod = this._media.periods?.[this._state.curPeriodIndex] ?? null;
-        this._state.curRep = this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
+        this._adaptationSet
+        = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
+        this._state.curRep = this._adaptationSet?.representations?.[this._state.curRepIndex] ?? null;
+        this._state.curSegmentNum = this._state.curRep?.segStartNumber ?? 0;
 
         return true;
     }
@@ -126,15 +130,19 @@ export default class Streamer {
             periodIndex: this._state.curPeriodIndex,
             adaptationSetIndex: this._state.curAdaptationSetIndex,
             representationIndex: this._state.curRepIndex,
-            segmentIndex: ++this._state.curSegmentIndex
+            segmentNum: this._state.curSegmentNum++
         });
     }
 
     protected _shouldLoadSegment(segment: Segment): boolean {
-        return segment.seqNum === this._state.curSegmentIndex;
+        if (!segment || !this._state.curRep) {
+            return false;
+        }
+        return segment.seqNum >= this._state.curRep.segStartNumber &&
+               segment.seqNum <= this._state.curRep.segEndNumber;
     }
 
     protected _loadSegment(segment: Segment) {
-        log.debug(`[${this._name}] loadSegment: ${segment.url}`);
+        log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
     }
 }

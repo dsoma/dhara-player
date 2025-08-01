@@ -36,6 +36,7 @@ export default class SegmentBase extends ModelBase {
         super(json, { ...inputTypeMap, ...typeMap });
 
         this.indexRangeExact ??= false;
+        this.timescale ??= 1;
 
         this._create(URL, 'Initialization', 'initElement');
         this._create(URL, 'RepresentationIndex');
