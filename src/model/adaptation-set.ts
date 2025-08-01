@@ -8,6 +8,7 @@ import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
+import type { IPeriodInfo } from './data-types';
 
 const typeMap = {
     id: DashTypes.Number,
@@ -63,6 +64,7 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
     public basePath?: URL;
 
     private readonly _firstRepresentation?: Representation | null;
+    private _periodInfo?: IPeriodInfo;
 
     /**
      * To add: par, subsegmentStartsWithSAP, initializationSetRef, initializationPrincipal,
@@ -80,6 +82,19 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
         this._firstRepresentation = this.representations[0] ?? null;
 
         this._init();
+    }
+
+    public set periodInfo(info: IPeriodInfo) {
+        this._periodInfo = info;
+        this.representations.forEach(representation => {
+            representation.periodInfo = info;
+        });
+        if (this.segmentTemplate) {
+            this.segmentTemplate.periodInfo = info;
+        }
+        if (this.segmentList) {
+            this.segmentList.periodInfo = info;
+        }
     }
 
     public get streamType(): StreamType {

@@ -99,3 +99,10 @@ export class Descriptor {
     constructor(public value: string) {
     }
 }
+
+export interface IPeriodInfo {
+    startTime: number; // in seconds
+    duration: number; // in seconds
+    endTime: number; // in seconds
+    id?: string;
+}

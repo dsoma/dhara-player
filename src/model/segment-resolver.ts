@@ -9,10 +9,10 @@ export function getSegment(segmentContainer: ISegmentContainer,
     }
 
     const basePath = getBasePath(segmentContainer, segmentResolveInfo.basePath);
-    const segmentIndex = segmentResolveInfo.segmentIndex;
+    const segmentNum = segmentResolveInfo.segmentNum;
 
     if (segmentContainer.segmentTemplate) {
-        return fromTemplate(segmentContainer, basePath, segmentIndex);
+        return fromTemplate(segmentContainer, basePath, segmentNum);
     }
 
     if (segmentContainer.segmentList) {
@@ -28,30 +28,51 @@ export function getSegment(segmentContainer: ISegmentContainer,
 
 function fromTemplate(segmentContainer: ISegmentContainer,
                       basePath: URL,
-                      segmentIndex: number): Segment | null {
+                      segmentNum: number): Segment | null {
     const template = segmentContainer.segmentTemplate;
     if (!template) {
         return null;
     }
 
+    const periodInfo = template.periodInfo;
+
+    // Find the position within the segment list:
     const start = template.startNumber ?? 1;
     const end   = template.endNumber ?? start;
-    if (segmentIndex < start || segmentIndex > end) {
+    const pos   = segmentNum - 1 + start;
+    if (pos < start || pos > end) {
         return null;
     }
 
-    const url = resolveUrl(template.media, segmentIndex, basePath);
+    // Find start and end times:
+    // If duration is absent, then we must use SegmentTimeline. (fix it later)
+    let duration  = template.durationSecs ?? 0;
+    const startTime = (pos - start) * duration;
+    let endTime   = startTime + duration;
+
+    if (periodInfo) {
+        if (startTime < periodInfo.startTime || startTime > periodInfo.endTime) {
+            return null;
+        }
+        if (endTime > periodInfo.endTime) {
+            endTime = periodInfo.endTime;
+            duration = endTime - startTime;
+        }
+    }
+
+    // Form segment media and init segment urls:
+    const url = replaceTokens(template.media, pos, basePath);
     const initSegmentUrl = template.initialization ? new URL(template.initialization, basePath) : new URL('');
 
-    const segment = new Segment({
+    return new Segment({
         url,
         initSegmentUrl,
-        seqNum: segmentIndex,
-        duration: template.duration,
+        seqNum: pos,
+        duration,
+        startTime,
+        endTime,
         timescale: template.timescale
     });
-
-    return segment;
 }
 
 function fromList(): Segment | null {
@@ -69,10 +90,17 @@ function getBasePath(segmentContainer: ISegmentContainer, basePath?: URL): URL {
     return basePath ?? new URL('');
 }
 
-function resolveUrl(url: string | undefined, segmentIndex: number, basePath: URL): URL {
+function replaceTokens(url: string | undefined, segmentNum: number, basePath: URL): URL {
     if (!url) {
         return new URL('');
     }
-    const resolvedUrl = url.replace(/\$Number\$/g, segmentIndex.toString());
+    // Other replacement tokens to support:
+    // $$ (escape $ sign)
+    // $Time$
+    // $Number%05d$ (segment number with leading zeros)
+    // $RepresentationID$ (representation ID)
+    // $Bandwidth$ (bandwidth)
+    // $SubNumber$ (only when either $Number$ or $Time$ is present)
+    const resolvedUrl = url.replace(/\$Number\$/g, segmentNum.toString());
     return new URL(resolvedUrl, basePath);
 }

@@ -1,5 +1,6 @@
 import SegmentBase from './segment-base';
 import { DashTypes } from './base';
+import type { IPeriodInfo } from './data-types';
 
 const typeMap = {
     duration: DashTypes.Number,
@@ -15,7 +16,10 @@ const typeMap = {
 export default class MultiSegmentBase extends SegmentBase {
     public readonly duration?: number;
     public readonly startNumber?: number;
-    public readonly endNumber?: number;
+    public endNumber?: number;
+    public durationSecs: number;
+
+    private _periodInfo?: IPeriodInfo;
 
     /**
      * To add: SegmentTimeline, BitstreamSwitching
@@ -23,7 +27,21 @@ export default class MultiSegmentBase extends SegmentBase {
 
     constructor(json: Record<string, any>, inputTypeMap: Record<string, DashTypes>) {
         super(json, { ...inputTypeMap, ...typeMap });
-        this.startNumber ??= 1; // fix it later
-        this.endNumber ??= this.startNumber; // fix it later
+        this.startNumber ??= 1;
+        this.durationSecs = (this.duration ?? 0) / (this.timescale ?? 1);
+    }
+
+    public set periodInfo(info: IPeriodInfo) {
+        this._periodInfo = info;
+        // If duration is absent, then we must use SegmentTimeline. (fix it later)
+        // If endNumber is explicitly set, do not infer it.
+        if (!this.endNumber) {
+            const count = Math.ceil(this._periodInfo.duration / this.durationSecs);
+            this.endNumber = this.startNumber ? this.startNumber + count - 1 : count;
+        }
+    }
+
+    public get periodInfo(): IPeriodInfo | undefined {
+        return this._periodInfo;
     }
 }

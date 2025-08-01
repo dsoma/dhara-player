@@ -7,6 +7,7 @@ import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
+import type { IPeriodInfo } from './data-types';
 
 const typeMap = {
     qualityRanking: DashTypes.Number,
@@ -33,6 +34,8 @@ export default class Representation extends RepBase implements ISegmentContainer
     public initSegment?: Segment;
     public basePath?: URL;
 
+    private _periodInfo?: IPeriodInfo;
+
     /**
      * To add: ExtendedBandwidth, SubRepresentation,
      * SegmentBase, SegmentList,
@@ -51,5 +54,15 @@ export default class Representation extends RepBase implements ISegmentContainer
 
     public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
         return SegmentResolver.getSegment(this, segmentResolveInfo);
+    }
+
+    public set periodInfo(info: IPeriodInfo) {
+        this._periodInfo = info;
+        if (this.segmentTemplate) {
+            this.segmentTemplate.periodInfo = info;
+        }
+        if (this.segmentList) {
+            this.segmentList.periodInfo = info;
+        }
     }
 }

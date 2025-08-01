@@ -14,7 +14,7 @@ class StreamerState {
     public curPeriodIndex: number = 0;
     public curAdaptationSetIndex: number = 0;
     public curRepIndex: number = 0;
-    public curSegmentIndex: number = 0;
+    public curSegmentNum: number = 0;
 }
 
 const PROCESS_TICK = 20; // in milliseconds
@@ -106,7 +106,7 @@ export default class Streamer {
             return;
         }
 
-        if (this._shouldLoadSegment(segment)) {
+        if (this._shouldLoadSegment()) {
             this._loadSegment(segment);
         }
     }
@@ -123,18 +123,18 @@ export default class Streamer {
         }
 
         return this._media.getSegment({
-            periodIndex: this._state.curPeriodIndex,
+            periodIndex: 1, // this._state.curPeriodIndex,
             adaptationSetIndex: this._state.curAdaptationSetIndex,
             representationIndex: this._state.curRepIndex,
-            segmentIndex: ++this._state.curSegmentIndex
+            segmentNum: ++this._state.curSegmentNum
         });
     }
 
-    protected _shouldLoadSegment(segment: Segment): boolean {
-        return segment.seqNum === this._state.curSegmentIndex;
+    protected _shouldLoadSegment(/* segment: Segment */): boolean {
+        return true; //segment.seqNum === this._state.curSegmentNum;
     }
 
     protected _loadSegment(segment: Segment) {
-        log.debug(`[${this._name}] loadSegment: ${segment.url}`);
+        log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
     }
 }

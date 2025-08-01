@@ -7,7 +7,7 @@ export interface ISegmentResolveInfo {
     periodIndex: number;
     adaptationSetIndex: number;
     representationIndex: number;
-    segmentIndex: number;
+    segmentNum: number;
     basePath?: URL;
 }
 

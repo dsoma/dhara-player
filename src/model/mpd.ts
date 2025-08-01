@@ -63,5 +63,11 @@ export default class Mpd extends ModelBase {
         this.minBufferTime ??= new Duration('');
 
         this._init();
+
+        /**
+         * Make sure period timing info are all set properly.
+         * If (i) @start attribute is absent, and (ii) the Period element is the first in the MPD, and (iii) the
+         * MPD@type is 'static′, then the PeriodStart time shall be set to zero.
+         */
     }
 }
