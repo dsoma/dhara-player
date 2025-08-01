@@ -75,9 +75,15 @@ export default class Mpd extends ModelBase {
             return;
         }
 
-        // If period start is absent, and MPD is VOD, then set the first period start to zero.
-        if (!this.periods[0].start && this.type === PresentationType.VOD) {
-            this.periods[0].start = new Duration('PT0S');
+        if (this.type === PresentationType.VOD) {
+            // If period start is absent, and MPD is VOD, then set the first period start to zero.
+            if (!this.periods[0].start) {
+                this.periods[0].start = new Duration('PT0S');
+            }
+            // If there is only one period, set the duration to the media presentation duration.
+            if (this.periods.length === 1) {
+                this.periods[0].duration = this.mediaPresentationDuration;
+            }
         }
 
         let elapsedTime = 0;

@@ -22,7 +22,7 @@ const typeMap = {
 export default class Period extends ModelBase implements ISegmentContainer {
     public readonly id?: string;
     public start?: Duration;
-    public readonly duration?: Duration;
+    public duration?: Duration;
     public readonly bitstreamSwitching?: boolean;
     public readonly baseUrls?: URL[];
     public readonly segmentBase?: SegmentBase;

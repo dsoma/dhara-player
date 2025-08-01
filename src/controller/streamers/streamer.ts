@@ -110,9 +110,11 @@ export default class Streamer {
             return;
         }
 
-        if (this._shouldLoadSegment(segment)) {
-            this._loadSegment(segment);
-        }
+        this._loadSegment(segment);
+
+        // if (this._shouldLoadSegment(segment)) {
+        //     this._loadSegment(segment);
+        // }
     }
 
     protected _getRepresentation(): Representation | null {
@@ -134,13 +136,13 @@ export default class Streamer {
         });
     }
 
-    protected _shouldLoadSegment(segment: Segment): boolean {
-        if (!segment || !this._state.curRep) {
-            return false;
-        }
-        return segment.seqNum >= this._state.curRep.segStartNumber &&
-               segment.seqNum <= this._state.curRep.segEndNumber;
-    }
+    // protected _shouldLoadSegment(segment: Segment): boolean {
+    //     if (!segment || !this._state.curRep) {
+    //         return false;
+    //     }
+    //     return segment.seqNum >= this._state.curRep.segStartNumber &&
+    //            segment.seqNum <= this._state.curRep.segEndNumber;
+    // }
 
     protected _loadSegment(segment: Segment) {
         log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
