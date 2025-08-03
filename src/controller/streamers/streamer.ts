@@ -22,6 +22,7 @@ class StreamerState {
 }
 
 const PROCESS_TICK = 20; // in milliseconds
+const SEGMENT_LOAD_LIMIT = 100;
 
 /**
  * Streamer is a class that handles the streaming of a media stream.
@@ -163,7 +164,7 @@ export default class Streamer {
         if (this._state.segmentLoading) {
             return false;
         }
-        return segment.seqNum <= 2;
+        return segment.seqNum <= SEGMENT_LOAD_LIMIT;
     }
 
     protected async _loadSegment(segment: Segment) {
