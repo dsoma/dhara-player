@@ -4,7 +4,10 @@ import type Representation from '../../model/representation';
 import type Period from '../../model/period';
 import type Segment from '../../model/segment';
 import type NativePlayer from '../native-player';
-import Buffer from './buffer';
+import SegmentLoader, { InitSegmentLoader } from '../../services/segment-loader';
+import type { IPipeline } from '../../services/segment-loader';
+import Buffer from '../buffer';
+import type { BufferSink } from '../buffer';
 import log from 'loglevel';
 
 class StreamerState {
@@ -15,6 +18,7 @@ class StreamerState {
     public curAdaptationSetIndex: number = 0;
     public curRepIndex: number = 0;
     public curSegmentNum: number = 0;
+    public segmentLoading: boolean = false;
 }
 
 const PROCESS_TICK = 20; // in milliseconds
@@ -32,6 +36,9 @@ export default class Streamer {
     protected _state: StreamerState = new StreamerState();
     protected _timer: NodeJS.Timeout | null = null;
     protected _name: string = this.constructor.name;
+    protected _initSegmentLoader: InitSegmentLoader = new InitSegmentLoader();
+    protected _initSegmentLoaded: boolean = false;
+    protected _curBufferSink: BufferSink | null = null;
 
     constructor(media: Media, adaptationSet: AdaptationSet,
                 nativePlayer: NativePlayer, adaptationSetIndex: number) {
@@ -54,6 +61,7 @@ export default class Streamer {
 
         try {
             this._buffer = new Buffer(mimeCodec, mediaSource);
+            this._initSegmentLoader.pipeline = this._getNewPipeline();
         } catch (error) {
             log.error(`[Streamer] Failed to create buffer for ${mimeCodec}`);
             log.error(error);
@@ -73,6 +81,7 @@ export default class Streamer {
     public destroy() {
         this._buffer?.destroy();
         this._buffer = null;
+        this._initSegmentLoader.destroy();
     }
 
     public onPlay() {
@@ -98,6 +107,19 @@ export default class Streamer {
         }
     }
 
+    protected _getNewPipeline(): IPipeline {
+        if (this._curBufferSink) {
+            // Maybe we have to cancel the current sink.
+            this._curBufferSink = null;
+        }
+
+        this._curBufferSink = this._buffer?.getNewSink() ?? null;
+
+        return {
+            sink: this._curBufferSink
+        };
+    }
+
     protected _process() {
         // At present, hard code the period and representation indices to 0.
         const rep = this._getRepresentation();
@@ -110,11 +132,9 @@ export default class Streamer {
             return;
         }
 
-        this._loadSegment(segment);
-
-        // if (this._shouldLoadSegment(segment)) {
-        //     this._loadSegment(segment);
-        // }
+        if (this._shouldLoadSegment(segment)) {
+            this._loadSegment(segment);
+        }
     }
 
     protected _getRepresentation(): Representation | null {
@@ -132,19 +152,36 @@ export default class Streamer {
             periodIndex: this._state.curPeriodIndex,
             adaptationSetIndex: this._state.curAdaptationSetIndex,
             representationIndex: this._state.curRepIndex,
-            segmentNum: this._state.curSegmentNum++
+            segmentNum: this._state.curSegmentNum
         });
     }
 
-    // protected _shouldLoadSegment(segment: Segment): boolean {
-    //     if (!segment || !this._state.curRep) {
-    //         return false;
-    //     }
-    //     return segment.seqNum >= this._state.curRep.segStartNumber &&
-    //            segment.seqNum <= this._state.curRep.segEndNumber;
-    // }
+    protected _shouldLoadSegment(segment: Segment): boolean {
+        if (!segment || !this._state.curRep) {
+            return false;
+        }
+        if (this._state.segmentLoading) {
+            return false;
+        }
+        return segment.seqNum <= 2;
+    }
 
-    protected _loadSegment(segment: Segment) {
+    protected async _loadSegment(segment: Segment) {
         log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
+
+        this._state.segmentLoading = true;
+
+        if (!this._initSegmentLoaded) {
+            await this._loadInitSegment(segment);
+        }
+
+        await (new SegmentLoader()).stream(segment, this._getNewPipeline());
+        this._state.segmentLoading = false;
+        this._state.curSegmentNum++;
+    }
+
+    protected async _loadInitSegment(segment: Segment) {
+        await this._initSegmentLoader.load(segment);
+        this._initSegmentLoaded = true;
     }
 }
