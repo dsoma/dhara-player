@@ -1,18 +1,61 @@
-// import log from 'loglevel';
+import log from 'loglevel';
 
 export default class Buffer {
-    private readonly _srcBuffer: SourceBuffer;
+    private _srcBuffer: SourceBuffer;
+    private _queue: Uint8Array[] = [];
 
     constructor(mimeCodec: string, mediaSource: MediaSource) {
         this._srcBuffer = mediaSource.addSourceBuffer(mimeCodec);
+        this._srcBuffer.addEventListener('updateend', () => { this._onUpdateEnd(); });
+        this._srcBuffer.addEventListener('error', (event) => { this._onError(event); });
     }
 
     public destroy() {
-        // this._srcBuffer.remove();
+        this._queue = [];
+        this._srcBuffer.removeEventListener('updateend', () => { this._onUpdateEnd(); });
+        this._srcBuffer.removeEventListener('error', (event) => { this._onError(event); });
+    }
+
+    public enqueue(chunk: Uint8Array) {
+        this._queue.push(chunk);
+        this._processQueue();
+    }
+
+    public clear() {
+        this._queue = [];
+    }
+
+    public abort() {
+        this.clear();
+        this._srcBuffer.abort();
     }
 
     public getNewSink(): WritableStream {
-        return new BufferSink(this._srcBuffer);
+        return new BufferSink(this);
+    }
+
+    private _processQueue() {
+        if (this._srcBuffer.updating || !this._queue.length) {
+            return;
+        }
+
+        try {
+            const chunk = this._queue.shift();
+            if (chunk?.length) {
+                this._srcBuffer.appendBuffer(chunk);
+            }
+        } catch (error) {
+            log.error('[Buffer] SrcBuffer append failed: ', error);
+        }
+    }
+
+    private _onUpdateEnd() {
+        this._processQueue();
+    }
+
+    private _onError(event: Event) {
+        this.clear();
+        log.error('[Buffer] SrcBuffer error: ', event);
     }
 }
 
@@ -21,8 +64,8 @@ export default class Buffer {
  * Pushes the segment data to the associated SourceBuffer.
  */
 export class BufferSink extends WritableStream {
-    constructor(srcBuffer: SourceBuffer) {
-        super(new UnderlyingSink(srcBuffer));
+    constructor(buffer: Buffer) {
+        super(new UnderlyingSink(buffer));
     }
 }
 
@@ -31,17 +74,16 @@ export class BufferSink extends WritableStream {
  * This sink is used by the pipeline to push the segment data.
  */
 class UnderlyingSink {
-    private _srcBuffer: SourceBuffer;
+    private _buffer: Buffer;
 
-    constructor(srcBuffer: SourceBuffer) {
-        this._srcBuffer = srcBuffer;
+    constructor(buffer: Buffer) {
+        this._buffer = buffer;
     }
 
     public async write(chunk: Uint8Array, controller: WritableStreamDefaultController) {
         if (chunk.length === 0) return;
         try {
-            await this._srcBuffer.appendBuffer(chunk);
-            // log.debug('Appended chunk. Size = ', chunk.length);
+            this._buffer.enqueue(chunk);
         } catch (error) {
             controller.error(error);
         }
@@ -50,10 +92,9 @@ class UnderlyingSink {
     public async close() {
         // Push residual data to the buffer
         // Do cleanup tasks
-        // log.debug('BufferSink close()');
     }
 
     public async abort() {
-        // Handle cancel
+        this._buffer.abort();
     }
 }
