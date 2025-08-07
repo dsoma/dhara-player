@@ -56,12 +56,10 @@ export default class Representation extends RepBase implements ISegmentContainer
         return SegmentResolver.getSegment(this, segmentResolveInfo);
     }
 
-    public get segStartNumber(): number {
-        return this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? 0;
-    }
-
-    public get segEndNumber(): number {
-        return this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? 0;
+    public getSegRange(_: ISegmentResolveInfo): [number, number] {
+        const rangeStart = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
+        const rangeEnd = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
+        return [rangeStart, rangeEnd];
     }
 
     public set periodInfo(info: IPeriodInfo) {

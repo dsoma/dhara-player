@@ -17,7 +17,7 @@ const typeMap = {
 };
 
 export enum PresentationType {
-    VOD  = 'static',
+    VOD = 'static',
     LIVE = 'dynamic',
 }
 
@@ -55,7 +55,7 @@ export default class Mpd extends ModelBase {
         super(json, typeMap);
 
         this._create(ProgramInformation, 'ProgramInformation');
-        this.periods  = this._buildArray(Period, 'Period');
+        this.periods = this._buildArray(Period, 'Period');
         this.baseURLs = this._buildArray(URL, 'BaseURL');
 
         this.profiles ??= '';
@@ -77,9 +77,7 @@ export default class Mpd extends ModelBase {
 
         if (this.type === PresentationType.VOD) {
             // If period start is absent, and MPD is VOD, then set the first period start to zero.
-            if (!this.periods[0].start) {
-                this.periods[0].start = new Duration('PT0S');
-            }
+            this.periods[0].start ??= new Duration('PT0S');
             // If there is only one period, set the duration to the media presentation duration.
             if (this.periods.length === 1) {
                 this.periods[0].duration = this.mediaPresentationDuration;
@@ -89,9 +87,7 @@ export default class Mpd extends ModelBase {
         let elapsedTime = 0;
 
         for (const period of this.periods) {
-            if (!period.start) {
-                period.start = new Duration('', new Date(elapsedTime * 1000));
-            }
+            period.start ??= new Duration('', new Date(elapsedTime * 1000));
             elapsedTime += period.duration?.seconds ?? 0;
             period.endTimeInSeconds = elapsedTime;
             period.updateTiming();
