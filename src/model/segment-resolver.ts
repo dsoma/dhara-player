@@ -10,7 +10,7 @@ export function getSegment(segmentContainer: ISegmentContainer,
         return null;
     }
 
-    const basePath = getBasePath(segmentContainer, segmentResolveInfo.basePath);
+    const basePath = segmentContainer.baseUrls?.[0]?.url ?? new URL('');
     const segmentNum = segmentResolveInfo.segmentNum;
 
     if (segmentContainer.segmentTemplate) {
@@ -38,6 +38,7 @@ function fromTemplate(segmentContainer: ISegmentContainer,
     }
 
     const periodInfo = template.periodInfo;
+    const baseUrl = template.baseUrl ?? basePath;
 
     // Find the position within the segment list:
     const start = template.startNumber ?? 1;
@@ -71,7 +72,7 @@ function fromTemplate(segmentContainer: ISegmentContainer,
         RepresentationID: getRepId(segmentContainer, segmentResolveInfo),
         Bandwidth: getBandwidth(segmentContainer, segmentResolveInfo),
         Time: startTime,
-        basePath
+        baseUrl
     };
     const url = replaceTokens(template.media, tokenMap);
     const initSegmentUrl = template.initialization
@@ -95,13 +96,6 @@ function fromList(): Segment | null {
 
 function fromBase(): Segment | null {
     return null; // implement it later
-}
-
-function getBasePath(segmentContainer: ISegmentContainer, basePath?: URL): URL {
-    if (segmentContainer.baseUrls?.length) {
-        return segmentContainer.baseUrls[0].url ?? new URL('');
-    }
-    return basePath ?? new URL('');
 }
 
 function getRepId(segmentContainer: ISegmentContainer,
@@ -159,5 +153,5 @@ function replaceTokens(url: string | undefined,
     resolvedUrl = resolvedUrl.replace(/\$RepresentationID\$/g, tokenMap.RepresentationID as string);
     resolvedUrl = resolvedUrl.replace(/\$Bandwidth\$/g, tokenMap.Bandwidth as string);
     resolvedUrl = resolvedUrl.replace(/\$Time\$/g, tokenMap.Time as string);
-    return new URL(resolvedUrl, tokenMap.basePath as URL);
+    return new URL(resolvedUrl, tokenMap.baseUrl as URL);
 }

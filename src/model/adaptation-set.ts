@@ -1,11 +1,12 @@
 import { DashTypes } from './base';
 import RepBase from './rep-base';
-import SegmentBase from './segment-base';
-import SegmentList from './segment-list';
-import SegmentTemplate from './segment-template';
+import type SegmentBase from './segment-base';
+import type SegmentList from './segment-list';
+import type SegmentTemplate from './segment-template';
 import Representation from './representation';
 import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
+import { segmentElementClasses } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
 import type { IPeriodInfo } from './data-types';
@@ -62,7 +63,6 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
     public readonly representations: Representation[];
 
     public initSegment?: Segment;
-    public basePath?: URL;
 
     private readonly _firstRepresentation?: Representation | null;
     private _periodInfo?: IPeriodInfo;
@@ -74,15 +74,10 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
     constructor(json: Record<string, any>, parentBaseUrl?: URL) {
         super(json, typeMap);
 
-        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
-        const baseUrlStr = this.baseUrls?.[0]?.url?.toString() ?? '';
+        this.baseUrls = this._createBaseUrls(BaseURL, parentBaseUrl);
+        this._createSegmentElements(segmentElementClasses, this.baseUrls);
 
-        this._create(SegmentBase, 'SegmentBase');
-        this._create(SegmentList, 'SegmentList');
-        this._create(SegmentTemplate, 'SegmentTemplate', undefined, baseUrlStr);
-
-        this.representations = this._buildArray(Representation, 'Representation', baseUrlStr);
-
+        this.representations = this._buildArray(Representation, 'Representation', this.baseUrls?.[0]?.url?.toString() ?? '');
         this._firstRepresentation = this.representations[0] ?? null;
 
         this._init();
@@ -135,7 +130,6 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
             return null;
         }
 
-        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         const representation = this.representations[representationIndex];
         let segment = representation?.getSegment(segmentResolveInfo);
         segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);

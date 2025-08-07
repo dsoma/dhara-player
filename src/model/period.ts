@@ -1,11 +1,12 @@
 import ModelBase, { DashTypes } from './base';
 import { Descriptor, type Duration, type IPeriodInfo } from './data-types';
-import SegmentBase from './segment-base';
-import SegmentList from './segment-list';
-import SegmentTemplate from './segment-template';
+import type SegmentBase from './segment-base';
+import type SegmentList from './segment-list';
+import type SegmentTemplate from './segment-template';
 import AdaptationSet from './adaptation-set';
 import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
+import { segmentElementClasses } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
 import BaseURL from './base-url';
@@ -44,11 +45,8 @@ export default class Period extends ModelBase implements ISegmentContainer {
         super(json, typeMap);
 
         this.bitstreamSwitching ??= false;
-        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
-
-        this._create(SegmentBase, 'SegmentBase');
-        this._create(SegmentList, 'SegmentList');
-        this._create(SegmentTemplate, 'SegmentTemplate');
+        this.baseUrls = this._createBaseUrls(BaseURL, parentBaseUrl);
+        this._createSegmentElements(segmentElementClasses, this.baseUrls);
         this._create(Descriptor, 'AssetIdentifier');
 
         this.adaptationSets = this._buildArray(AdaptationSet, 'AdaptationSet', this.baseUrls?.[0]?.url);
@@ -77,7 +75,6 @@ export default class Period extends ModelBase implements ISegmentContainer {
             return null;
         }
 
-        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         const adaptationSet = this.adaptationSets[adaptationSetIndex];
         let segment = adaptationSet?.getSegment(segmentResolveInfo);
         segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);

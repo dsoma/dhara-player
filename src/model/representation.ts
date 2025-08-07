@@ -1,10 +1,11 @@
 import RepBase from './rep-base';
 import { DashTypes } from './base';
-import SegmentTemplate from './segment-template';
+import type SegmentTemplate from './segment-template';
 import type SegmentBase from './segment-base';
 import type SegmentList from './segment-list';
 import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
+import { segmentElementClasses } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
 import type { IPeriodInfo } from './data-types';
@@ -33,7 +34,6 @@ export default class Representation extends RepBase implements ISegmentContainer
     public readonly segmentList?: SegmentList;
 
     public initSegment?: Segment;
-    public basePath?: URL;
 
     private _periodInfo?: IPeriodInfo;
 
@@ -47,14 +47,13 @@ export default class Representation extends RepBase implements ISegmentContainer
         this.id ??= '';
         this.bandwidth ??= 0;
 
-        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
-        this._create(SegmentTemplate, 'SegmentTemplate', undefined, this.baseUrls?.[0]?.url);
+        this.baseUrls = this._createBaseUrls(BaseURL, parentBaseUrl);
+        this._createSegmentElements(segmentElementClasses, this.baseUrls);
 
         this._init();
     }
 
     public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
-        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         return SegmentResolver.getSegment(this, segmentResolveInfo);
     }
 

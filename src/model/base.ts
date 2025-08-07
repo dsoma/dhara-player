@@ -11,6 +11,12 @@ export enum DashTypes {
     Boolean,
 }
 
+export interface ISegmentElementClasses {
+    segmentBaseClass: any;
+    segmentListClass: any;
+    segmentTemplateClass: any;
+}
+
 /**
  * Base class for all Dash model objects.
  *
@@ -91,5 +97,20 @@ export default class ModelBase {
 
     protected _init() {
         delete (this as any).json;
+    }
+
+    protected _createBaseUrls(baseUrlClass: any,parentBaseUrl?: URL): any[] {
+        let baseUrls = this._buildArray(baseUrlClass, 'BaseURL', parentBaseUrl);
+        if (!baseUrls.length) {
+            baseUrls = [ new baseUrlClass('', parentBaseUrl) ];
+        }
+        return baseUrls;
+    }
+
+    protected _createSegmentElements(segmentElementClasses: ISegmentElementClasses, baseUrls: any[]) {
+        const baseUrlStr = baseUrls?.[0]?.url?.toString() ?? '';
+        this._create(segmentElementClasses.segmentBaseClass, 'SegmentBase', undefined, baseUrlStr);
+        this._create(segmentElementClasses.segmentListClass, 'SegmentList', undefined, baseUrlStr);
+        this._create(segmentElementClasses.segmentTemplateClass, 'SegmentTemplate', undefined, baseUrlStr);
     }
 }
