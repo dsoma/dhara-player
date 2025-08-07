@@ -99,7 +99,7 @@ function fromBase(): Segment | null {
 
 function getBasePath(segmentContainer: ISegmentContainer, basePath?: URL): URL {
     if (segmentContainer.baseUrls?.length) {
-        return segmentContainer.baseUrls[0];
+        return segmentContainer.baseUrls[0].url ?? new URL('');
     }
     return basePath ?? new URL('');
 }

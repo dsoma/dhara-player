@@ -9,6 +9,7 @@ import type { ISegmentResolveInfo } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
 import type { IPeriodInfo } from './data-types';
+import BaseURL from './base-url';
 
 const typeMap = {
     id: DashTypes.Number,
@@ -54,7 +55,7 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
     public readonly segmentAlignment?: boolean;
     public readonly subsegmentAlignment?: boolean;
     public readonly bitstreamSwitching?: boolean;
-    public readonly baseUrls?: URL[];
+    public readonly baseUrls?: BaseURL[];
     public readonly segmentBase?: SegmentBase;
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
@@ -70,15 +71,18 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
      * To add: par, subsegmentStartsWithSAP, initializationSetRef, initializationPrincipal,
      * Accessibility, Role, Rating, Viewpoint, ContentComponent,
      */
-    constructor(json: Record<string, any>) {
+    constructor(json: Record<string, any>, parentBaseUrl?: URL) {
         super(json, typeMap);
+
+        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
+        const baseUrlStr = this.baseUrls?.[0]?.url?.toString() ?? '';
 
         this._create(SegmentBase, 'SegmentBase');
         this._create(SegmentList, 'SegmentList');
-        this._create(SegmentTemplate, 'SegmentTemplate');
+        this._create(SegmentTemplate, 'SegmentTemplate', undefined, baseUrlStr);
 
-        this.representations = this._buildArray(Representation, 'Representation');
-        this.baseUrls = this._buildArray(URL, 'BaseURL');
+        this.representations = this._buildArray(Representation, 'Representation', baseUrlStr);
+
         this._firstRepresentation = this.representations[0] ?? null;
 
         this._init();
@@ -131,20 +135,20 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
             return null;
         }
 
+        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         const representation = this.representations[representationIndex];
         let segment = representation?.getSegment(segmentResolveInfo);
         segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);
         return segment;
     }
 
-    public getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number] {
-        const { representationIndex } = segmentResolveInfo;
-        const representation = this.representations[representationIndex];
-        const range = representation?.getSegRange(segmentResolveInfo) ?? [NaN, NaN];
-        if (isNaN(range[0])) {
+    public getSegRange(): [number, number] {
+        const representation = this.representations[0];
+        const range = representation?.getSegRange() ?? [NaN, NaN];
+        if (Number.isNaN(range[0])) {
             range[0] = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
         }
-        if (isNaN(range[1])) {
+        if (Number.isNaN(range[1])) {
             range[1] = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
         }
         return range;

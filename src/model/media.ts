@@ -23,7 +23,7 @@ export default class Media {
 
     public build(metadata: Record<string, any>) {
         this.srcBasePath = new URL(getUrlBasePath(this.srcUrl));
-        this._mpd = new Mpd(metadata);
+        this._mpd = new Mpd(metadata, this.srcBasePath);
         log.debug(this);
     }
 
@@ -74,7 +74,6 @@ export default class Media {
         }
 
         segmentResolveInfo.basePath = this.srcBasePath;
-        const period = this.periods[periodIndex];
-        return period?.getSegment(segmentResolveInfo) ?? null;
+        return this._mpd?.getSegment(segmentResolveInfo) ?? null;
     }
 }

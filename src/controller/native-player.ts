@@ -20,8 +20,8 @@ export enum NativePlayerEvent {
 
 export enum MediaSourceReadyState {
     CLOSED = 'closed',
-    OPEN = 'open',
-    ENDED = 'ended',
+    OPEN   = 'open',
+    ENDED  = 'ended',
 }
 
 export default class NativePlayer extends EventEmitter {
@@ -29,7 +29,7 @@ export default class NativePlayer extends EventEmitter {
     private _mediaSource: MediaSource | null = null;
 
     constructor(private readonly _type: MediaType,
-        private readonly _playerContainer: HTMLElement) {
+                private readonly _playerContainer: HTMLElement) {
         super();
         this._createPlayer();
         this._createMediaSource();
@@ -46,7 +46,7 @@ export default class NativePlayer extends EventEmitter {
                 this._mediaSource.endOfStream();
             }
 
-            this._mediaSource.removeEventListener('sourceopen', this._onSourceOpen.bind(this));
+            this._mediaSource.removeEventListener('sourceopen',  this._onSourceOpen.bind(this));
             this._mediaSource.removeEventListener('sourceclose', this._onSourceClose.bind(this));
             this._mediaSource.removeEventListener('sourceended', this._onSourceEnded.bind(this));
 
@@ -62,6 +62,10 @@ export default class NativePlayer extends EventEmitter {
 
     public get mediaSource(): MediaSource | null {
         return this._mediaSource;
+    }
+
+    public get mediaElement(): MediaElement {
+        return this._mediaElement;
     }
 
     public get bufferLength(): number {

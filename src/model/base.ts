@@ -56,7 +56,7 @@ export default class ModelBase {
     /**
      * Build an array of objects from the JSON input.
      */
-    protected _buildArray(classDef: any, elementName: string): any[] {
+    protected _buildArray(classDef: any, elementName: string, ...args: any[]): any[] {
         const arrayMember: any[] = [];
         const className = elementName ?? classDef.name;
 
@@ -67,18 +67,18 @@ export default class ModelBase {
         const value = this.json[className];
 
         if (!Array.isArray(value)) {
-            arrayMember.push(new classDef(value));
+            arrayMember.push(new classDef(value, ...args));
             return arrayMember;
         }
 
         for (const item of value) {
-            arrayMember.push(new classDef(item));
+            arrayMember.push(new classDef(item, ...args));
         }
 
         return arrayMember;
     }
 
-    protected _create(classDef: any, elementName: string, property?: string) {
+    protected _create(classDef: any, elementName: string, property?: string, ...args: any[]) {
         const className = elementName ?? classDef.name;
 
         if (!this.json?.[className]) {
@@ -86,7 +86,7 @@ export default class ModelBase {
         }
 
         const memberName = property ?? toCamelCase(className);
-        (this as any)[memberName] = new classDef(this.json[className]);
+        (this as any)[memberName] = new classDef(this.json[className], ...args);
     }
 
     protected _init() {

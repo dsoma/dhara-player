@@ -1,7 +1,10 @@
 import ModelBase, { DashTypes } from './base';
+import BaseURL from './base-url';
 import { Duration } from './data-types';
 import Period from './period';
 import ProgramInformation from './program-info';
+import type Segment from './segment';
+import type { ISegmentResolveInfo } from './segment-container';
 
 const typeMap = {
     availabilityStartTime: DashTypes.Date,
@@ -40,7 +43,7 @@ export default class Mpd extends ModelBase {
     public readonly maxSegmentDuration?: Duration;
     public readonly maxSubsegmentDuration?: Duration;
     public readonly programInformations?: ProgramInformation[];
-    public readonly baseURLs?: URL[];
+    public readonly baseUrls?: BaseURL[];
     public readonly locations?: string[];
     public readonly periods: Period[];
 
@@ -51,18 +54,29 @@ export default class Mpd extends ModelBase {
      * EssentialProperty, SupplementalProperty, UTCTiming, LeapSecondInformation
      */
 
-    constructor(json: Record<string, any>) {
+    constructor(json: Record<string, any>, baseURL?: URL) {
         super(json, typeMap);
 
+        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', baseURL);
         this._create(ProgramInformation, 'ProgramInformation');
-        this.periods = this._buildArray(Period, 'Period');
-        this.baseURLs = this._buildArray(URL, 'BaseURL');
+        this.periods = this._buildArray(Period, 'Period', this.baseUrls?.[0]?.url);
 
         this.profiles ??= '';
         this.type ??= PresentationType.VOD;
         this.minBufferTime ??= new Duration('');
 
         this._init();
+    }
+
+    public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        const { periodIndex } = segmentResolveInfo;
+        if (periodIndex < 0 || periodIndex >= this.periods.length) {
+            return null;
+        }
+
+        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
+        const period = this.periods[periodIndex];
+        return period?.getSegment(segmentResolveInfo) ?? null;
     }
 
     protected _init() {

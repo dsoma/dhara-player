@@ -8,6 +8,7 @@ import type { ISegmentResolveInfo } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
 import type { IPeriodInfo } from './data-types';
+import BaseURL from './base-url';
 
 const typeMap = {
     qualityRanking: DashTypes.Number,
@@ -26,7 +27,7 @@ export default class Representation extends RepBase implements ISegmentContainer
     public readonly associationType?: string;
     public readonly mediaStreamStructureId?: string;
     public readonly bandwidth: number;
-    public readonly baseUrls?: URL[];
+    public readonly baseUrls?: BaseURL[];
     public readonly segmentTemplate?: SegmentTemplate;
     public readonly segmentBase?: SegmentBase;
     public readonly segmentList?: SegmentList;
@@ -41,22 +42,23 @@ export default class Representation extends RepBase implements ISegmentContainer
      * SegmentBase, SegmentList,
      */
 
-    constructor(json: Record<string, any>) {
+    constructor(json: Record<string, any>, parentBaseUrl?: URL) {
         super(json, typeMap);
         this.id ??= '';
         this.bandwidth ??= 0;
 
-        this.baseUrls = this._buildArray(URL, 'BaseURL');
-        this._create(SegmentTemplate, 'SegmentTemplate');
+        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
+        this._create(SegmentTemplate, 'SegmentTemplate', undefined, this.baseUrls?.[0]?.url);
 
         this._init();
     }
 
     public getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null {
+        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         return SegmentResolver.getSegment(this, segmentResolveInfo);
     }
 
-    public getSegRange(_: ISegmentResolveInfo): [number, number] {
+    public getSegRange(): [number, number] {
         const rangeStart = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
         const rangeEnd = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
         return [rangeStart, rangeEnd];

@@ -9,7 +9,7 @@ import type { IPipeline } from '../../services/segment-loader';
 import Buffer from '../buffer';
 import type { BufferSink } from '../buffer';
 import log from 'loglevel';
-import { ISegmentResolveInfo } from '../../model/segment-container';
+import type{ ISegmentResolveInfo } from '../../model/segment-container';
 
 class StreamerState {
     public curRep: Representation | null = null;
@@ -76,7 +76,7 @@ export default class Streamer {
         this._adaptationSet
             = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
         this._state.curRep = this._adaptationSet?.representations?.[this._state.curRepIndex] ?? null;
-        this._state.curSegmentNum = this._state.curPeriod?.getSegRange(this._getSegmentResolveInfo())?.[0] ?? NaN;
+        this._state.curSegmentNum = this._adaptationSet.getSegRange()[0] ?? NaN;
 
         return true;
     }
@@ -97,6 +97,15 @@ export default class Streamer {
         this.stop();
     }
 
+    public onEnded() {
+        log.debug(`[${this._name}] onEnded`);
+        this.stop();
+    }
+
+    public onTimeupdate() {
+        // const currentTime = this._nativePlayer.mediaElement?.currentTime ?? 0;
+    }
+
     public start() {
         this._timer = setInterval(() => {
             this._process();
@@ -108,6 +117,10 @@ export default class Streamer {
             clearInterval(this._timer);
             this._timer = null;
         }
+    }
+
+    public isBufferClosed(): boolean {
+        return this._buffer?.isClosed() ?? true;
     }
 
     protected _getNewPipeline(): IPipeline {
@@ -131,7 +144,7 @@ export default class Streamer {
         }
 
         const segmentNum = this._getNextSegmentNum();
-        if (isNaN(segmentNum)) {
+        if (Number.isNaN(segmentNum)) {
             return;
         }
 
@@ -168,7 +181,7 @@ export default class Streamer {
         if (this._nativePlayer.bufferLength >= MAX_BUFFER_LENGTH) {
             return false;
         }
-        const range = this._adaptationSet.getSegRange(this._getSegmentResolveInfo(segmentNum));
+        const range = this._adaptationSet.getSegRange();
         return segmentNum >= range[0] && segmentNum <= range[1];
     }
 
@@ -188,8 +201,15 @@ export default class Streamer {
         }
 
         await (new SegmentLoader()).stream(segment, this._getNewPipeline());
+
         this._state.segmentLoading = false;
         this._state.firstSegment = false;
+
+        const range = this._adaptationSet.getSegRange();
+        const periodCount = this._media.periods.length;
+        if (this._state.curSegmentNum === range[1] && this._state.curPeriodIndex === periodCount - 1) {
+            this._buffer?.endOfStream();
+        }
     }
 
     protected async _loadInitSegment(segment: Segment) {
