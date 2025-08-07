@@ -28,10 +28,10 @@ const typeMap = {
 
 export enum StreamType {
     UNKNOWN = 'unknown',
-    AUDIO   = 'audio',
-    VIDEO   = 'video',
-    TEXT    = 'text',
-    MUXED   = 'muxed', // contains both audio and video
+    AUDIO = 'audio',
+    VIDEO = 'video',
+    TEXT = 'text',
+    MUXED = 'muxed', // contains both audio and video
 }
 
 /**
@@ -133,9 +133,20 @@ export default class AdaptationSet extends RepBase implements ISegmentContainer 
 
         const representation = this.representations[representationIndex];
         let segment = representation?.getSegment(segmentResolveInfo);
-        if (!segment) {
-            segment = SegmentResolver.getSegment(this, segmentResolveInfo);
-        }
+        segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);
         return segment;
+    }
+
+    public getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number] {
+        const { representationIndex } = segmentResolveInfo;
+        const representation = this.representations[representationIndex];
+        const range = representation?.getSegRange(segmentResolveInfo) ?? [NaN, NaN];
+        if (isNaN(range[0])) {
+            range[0] = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
+        }
+        if (isNaN(range[1])) {
+            range[1] = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
+        }
+        return range;
     }
 }

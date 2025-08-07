@@ -17,8 +17,12 @@
     <script>
         const playerContainer = document.getElementById('player-container');
         const player = new window.DHARA.Player(playerContainer);
+        // Audio only
         // player.setSource(new URL('https://livesim2.dashif.org/vod/testpic_2s/audio.mpd'));
-        player.setSource(new URL('https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd'));
+        // A/V single period:
+        player.setSource(new URL('https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd'));
+        // A/V multi period:
+        // player.setSource(new URL('https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd'));
     </script>
 </body>
 

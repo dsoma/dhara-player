@@ -19,4 +19,5 @@ export default interface ISegmentContainer {
     segmentTemplate?: SegmentTemplate;
     initSegment?: Segment;
     getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null;
+    getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number];
 }

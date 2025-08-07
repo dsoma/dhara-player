@@ -57,8 +57,8 @@ export default class Period extends ModelBase implements ISegmentContainer {
 
     public updateTiming() {
         const startTime = this.start?.seconds ?? 0;
-        const duration  = this.duration?.seconds ?? 0;
-        const endTime   = this.endTimeInSeconds ?? startTime + duration;
+        const duration = this.duration?.seconds ?? 0;
+        const endTime = this.endTimeInSeconds ?? startTime + duration;
         const periodInfo: IPeriodInfo = {
             startTime,
             duration,
@@ -78,9 +78,20 @@ export default class Period extends ModelBase implements ISegmentContainer {
 
         const adaptationSet = this.adaptationSets[adaptationSetIndex];
         let segment = adaptationSet?.getSegment(segmentResolveInfo);
-        if (!segment) {
-            segment = SegmentResolver.getSegment(this, segmentResolveInfo);
-        }
+        segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);
         return segment;
+    }
+
+    public getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number] {
+        const { adaptationSetIndex } = segmentResolveInfo;
+        const adaptationSet = this.adaptationSets[adaptationSetIndex];
+        const range = adaptationSet?.getSegRange(segmentResolveInfo) ?? [NaN, NaN];
+        if (isNaN(range[0])) {
+            range[0] = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
+        }
+        if (isNaN(range[1])) {
+            range[1] = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
+        }
+        return range;
     }
 }

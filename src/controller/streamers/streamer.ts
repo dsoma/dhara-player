@@ -9,6 +9,7 @@ import type { IPipeline } from '../../services/segment-loader';
 import Buffer from '../buffer';
 import type { BufferSink } from '../buffer';
 import log from 'loglevel';
+import { ISegmentResolveInfo } from '../../model/segment-container';
 
 class StreamerState {
     public curRep: Representation | null = null;
@@ -19,10 +20,11 @@ class StreamerState {
     public curRepIndex: number = 0;
     public curSegmentNum: number = 0;
     public segmentLoading: boolean = false;
+    public firstSegment: boolean = true;
 }
 
 const PROCESS_TICK = 20; // in milliseconds
-const SEGMENT_LOAD_LIMIT = 100;
+const MAX_BUFFER_LENGTH = 60; // in seconds
 
 /**
  * Streamer is a class that handles the streaming of a media stream.
@@ -42,7 +44,7 @@ export default class Streamer {
     protected _curBufferSink: BufferSink | null = null;
 
     constructor(media: Media, adaptationSet: AdaptationSet,
-                nativePlayer: NativePlayer, adaptationSetIndex: number) {
+        nativePlayer: NativePlayer, adaptationSetIndex: number) {
         this._media = media;
         this._nativePlayer = nativePlayer;
         this._adaptationSet = adaptationSet;
@@ -50,8 +52,8 @@ export default class Streamer {
     }
 
     public initialize(): boolean {
-        const mimeType  = this._adaptationSet.getMimeType();
-        const codecs    = this._adaptationSet.getCodecs();
+        const mimeType = this._adaptationSet.getMimeType();
+        const codecs = this._adaptationSet.getCodecs();
         const mimeCodec = `${mimeType}; codecs="${codecs}"`;
         const mediaSource = this._nativePlayer.mediaSource;
 
@@ -72,9 +74,9 @@ export default class Streamer {
         this._state.curPeriodIndex = 0;
         this._state.curPeriod = this._media.periods?.[this._state.curPeriodIndex] ?? null;
         this._adaptationSet
-        = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
+            = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
         this._state.curRep = this._adaptationSet?.representations?.[this._state.curRepIndex] ?? null;
-        this._state.curSegmentNum = this._state.curRep?.segStartNumber ?? 0;
+        this._state.curSegmentNum = this._state.curPeriod?.getSegRange(this._getSegmentResolveInfo())?.[0] ?? NaN;
 
         return true;
     }
@@ -128,13 +130,13 @@ export default class Streamer {
             return;
         }
 
-        const segment = this._getNextSegment();
-        if (!segment) {
+        const segmentNum = this._getNextSegmentNum();
+        if (isNaN(segmentNum)) {
             return;
         }
 
-        if (this._shouldLoadSegment(segment)) {
-            this._loadSegment(segment);
+        if (this._shouldLoadSegment(segmentNum)) {
+            this._loadSegment(this._getSegment(segmentNum));
         }
     }
 
@@ -143,34 +145,43 @@ export default class Streamer {
         return this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
     }
 
-    protected _getNextSegment(): Segment | null {
+    protected _getNextSegmentNum(): number {
+        const state = this._state;
+        return state.firstSegment ? state.curSegmentNum : state.curSegmentNum + 1;
+    }
+
+    protected _getSegment(segmentNum: number): Segment | null {
         const rep = this._getRepresentation();
         if (!rep) {
             return null;
         }
-
-        return this._media.getSegment({
-            periodIndex: this._state.curPeriodIndex,
-            adaptationSetIndex: this._state.curAdaptationSetIndex,
-            representationIndex: this._state.curRepIndex,
-            segmentNum: this._state.curSegmentNum
-        });
+        return this._media.getSegment(this._getSegmentResolveInfo(segmentNum));
     }
 
-    protected _shouldLoadSegment(segment: Segment): boolean {
-        if (!segment || !this._state.curRep) {
+    protected _shouldLoadSegment(segmentNum: number): boolean {
+        if (!this._state.curRep) {
             return false;
         }
         if (this._state.segmentLoading) {
             return false;
         }
-        return segment.seqNum <= SEGMENT_LOAD_LIMIT;
+        if (this._nativePlayer.bufferLength >= MAX_BUFFER_LENGTH) {
+            return false;
+        }
+        const range = this._adaptationSet.getSegRange(this._getSegmentResolveInfo(segmentNum));
+        return segmentNum >= range[0] && segmentNum <= range[1];
     }
 
-    protected async _loadSegment(segment: Segment) {
+    protected async _loadSegment(segment: Segment | null) {
+        if (!segment) {
+            return;
+        }
+
         log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
 
         this._state.segmentLoading = true;
+        this._state.curSegmentNum = segment.seqNum;
+        this._state.curSegment = segment;
 
         if (!this._initSegmentLoaded) {
             await this._loadInitSegment(segment);
@@ -178,11 +189,21 @@ export default class Streamer {
 
         await (new SegmentLoader()).stream(segment, this._getNewPipeline());
         this._state.segmentLoading = false;
-        this._state.curSegmentNum++;
+        this._state.firstSegment = false;
     }
 
     protected async _loadInitSegment(segment: Segment) {
         await this._initSegmentLoader.load(segment);
         this._initSegmentLoaded = true;
+    }
+
+    protected _getSegmentResolveInfo(segmentNum?: number): ISegmentResolveInfo {
+        const state = this._state;
+        return {
+            periodIndex: state.curPeriodIndex,
+            adaptationSetIndex: state.curAdaptationSetIndex,
+            representationIndex: state.curRepIndex,
+            segmentNum: segmentNum ?? state.curSegmentNum
+        };
     }
 }

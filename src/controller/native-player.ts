@@ -5,23 +5,23 @@ import log from 'loglevel';
 type MediaElement = HTMLAudioElement | HTMLVideoElement | null;
 
 export enum NativePlayerEvent {
-    ERROR        = 'error',
-    ENDED        = 'ended',
-    PAUSE        = 'pause',
-    PLAY         = 'play',
-    PLAYING      = 'playing',
+    ERROR = 'error',
+    ENDED = 'ended',
+    PAUSE = 'pause',
+    PLAY = 'play',
+    PLAYING = 'playing',
     SOURCE_CLOSE = 'sourceclose',
     SOURCE_ENDED = 'sourceended',
-    SOURCE_OPEN  = 'sourceopen',
-    TIMEUPDATE   = 'timeupdate',
+    SOURCE_OPEN = 'sourceopen',
+    TIMEUPDATE = 'timeupdate',
     VOLUMECHANGE = 'volumechange',
-    WAITING      = 'waiting',
+    WAITING = 'waiting',
 }
 
 export enum MediaSourceReadyState {
     CLOSED = 'closed',
-    OPEN   = 'open',
-    ENDED  = 'ended',
+    OPEN = 'open',
+    ENDED = 'ended',
 }
 
 export default class NativePlayer extends EventEmitter {
@@ -29,7 +29,7 @@ export default class NativePlayer extends EventEmitter {
     private _mediaSource: MediaSource | null = null;
 
     constructor(private readonly _type: MediaType,
-                private readonly _playerContainer: HTMLElement) {
+        private readonly _playerContainer: HTMLElement) {
         super();
         this._createPlayer();
         this._createMediaSource();
@@ -46,7 +46,7 @@ export default class NativePlayer extends EventEmitter {
                 this._mediaSource.endOfStream();
             }
 
-            this._mediaSource.removeEventListener('sourceopen',  this._onSourceOpen.bind(this));
+            this._mediaSource.removeEventListener('sourceopen', this._onSourceOpen.bind(this));
             this._mediaSource.removeEventListener('sourceclose', this._onSourceClose.bind(this));
             this._mediaSource.removeEventListener('sourceended', this._onSourceEnded.bind(this));
 
@@ -64,6 +64,20 @@ export default class NativePlayer extends EventEmitter {
         return this._mediaSource;
     }
 
+    public get bufferLength(): number {
+        const buffered = this._mediaElement?.buffered ?? null;
+        if (!buffered) {
+            return 0;
+        }
+        const currentTime = this._mediaElement?.currentTime ?? 0;
+        for (let i = 0; i < buffered.length; i++) {
+            if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) {
+                return buffered.end(i) - currentTime;
+            }
+        }
+        return 0;
+    }
+
     private _createPlayer() {
         this._mediaElement = document.createElement(this._type) as MediaElement;
         if (!this._mediaElement) {
@@ -74,8 +88,8 @@ export default class NativePlayer extends EventEmitter {
         this._playerContainer.appendChild(this._mediaElement);
 
         if (this._type === MediaType.VIDEO) {
-            const videoElement  = this._mediaElement as HTMLVideoElement;
-            videoElement.width  = this._playerContainer.clientWidth;
+            const videoElement = this._mediaElement as HTMLVideoElement;
+            videoElement.width = this._playerContainer.clientWidth;
             videoElement.height = this._playerContainer.clientHeight;
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
@@ -97,7 +111,7 @@ export default class NativePlayer extends EventEmitter {
             return;
         }
 
-        this._mediaSource.addEventListener('sourceopen',  this._onSourceOpen.bind(this));
+        this._mediaSource.addEventListener('sourceopen', this._onSourceOpen.bind(this));
         this._mediaSource.addEventListener('sourceclose', this._onSourceClose.bind(this));
         this._mediaSource.addEventListener('sourceended', this._onSourceEnded.bind(this));
 
