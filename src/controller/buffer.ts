@@ -1,8 +1,10 @@
 import log from 'loglevel';
 
 export default class Buffer {
-    private _srcBuffer: SourceBuffer;
+    private readonly _srcBuffer: SourceBuffer;
     private _queue: Uint8Array[] = [];
+    private _endOfStream: boolean = false;
+    private _closed: boolean = false;
 
     constructor(mimeCodec: string, mediaSource: MediaSource) {
         this._srcBuffer = mediaSource.addSourceBuffer(mimeCodec);
@@ -34,6 +36,15 @@ export default class Buffer {
         return new BufferSink(this);
     }
 
+    public endOfStream() {
+        this._endOfStream = true;
+        this._closeIfDone();
+    }
+
+    public isClosed(): boolean {
+        return this._closed && this._endOfStream;
+    }
+
     private _processQueue() {
         if (this._srcBuffer.updating || !this._queue.length) {
             return;
@@ -50,12 +61,19 @@ export default class Buffer {
     }
 
     private _onUpdateEnd() {
+        this._closeIfDone();
         this._processQueue();
     }
 
     private _onError(event: Event) {
         this.clear();
         log.error('[Buffer] SrcBuffer error: ', event);
+    }
+
+    private _closeIfDone() {
+        if (this._endOfStream && !this._queue.length) {
+            this._closed = true;
+        }
     }
 }
 
@@ -74,7 +92,7 @@ export class BufferSink extends WritableStream {
  * This sink is used by the pipeline to push the segment data.
  */
 class UnderlyingSink {
-    private _buffer: Buffer;
+    private readonly _buffer: Buffer;
 
     constructor(buffer: Buffer) {
         this._buffer = buffer;

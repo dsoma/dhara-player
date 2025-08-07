@@ -2,6 +2,7 @@ import type SegmentBase from './segment-base';
 import type SegmentList from './segment-list';
 import type SegmentTemplate from './segment-template';
 import type Segment from './segment';
+import type BaseURL from './base-url';
 
 export interface ISegmentResolveInfo {
     periodIndex: number;
@@ -13,11 +14,11 @@ export interface ISegmentResolveInfo {
 
 export default interface ISegmentContainer {
     basePath?: URL;
-    baseUrls?: URL[];
+    baseUrls?: BaseURL[];
     segmentBase?: SegmentBase;
     segmentList?: SegmentList;
     segmentTemplate?: SegmentTemplate;
     initSegment?: Segment;
     getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null;
-    getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number];
+    getSegRange(index?: number): [number, number];
 }

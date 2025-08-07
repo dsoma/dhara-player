@@ -8,6 +8,7 @@ import type ISegmentContainer from './segment-container';
 import type { ISegmentResolveInfo } from './segment-container';
 import type Segment from './segment';
 import * as SegmentResolver from './segment-resolver';
+import BaseURL from './base-url';
 
 const typeMap = {
     start: DashTypes.Duration,
@@ -24,7 +25,7 @@ export default class Period extends ModelBase implements ISegmentContainer {
     public start?: Duration;
     public duration?: Duration;
     public readonly bitstreamSwitching?: boolean;
-    public readonly baseUrls?: URL[];
+    public readonly baseUrls?: BaseURL[];
     public readonly segmentBase?: SegmentBase;
     public readonly segmentList?: SegmentList;
     public readonly segmentTemplate?: SegmentTemplate;
@@ -39,18 +40,18 @@ export default class Period extends ModelBase implements ISegmentContainer {
      * SupplementalProperty, EmptyAdaptationSet, GroupLabel, Preselection
      */
 
-    constructor(json: Record<string, any>) {
+    constructor(json: Record<string, any>, parentBaseUrl?: URL) {
         super(json, typeMap);
 
         this.bitstreamSwitching ??= false;
+        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', parentBaseUrl);
 
         this._create(SegmentBase, 'SegmentBase');
         this._create(SegmentList, 'SegmentList');
         this._create(SegmentTemplate, 'SegmentTemplate');
         this._create(Descriptor, 'AssetIdentifier');
 
-        this.adaptationSets = this._buildArray(AdaptationSet, 'AdaptationSet');
-        this.baseUrls = this._buildArray(URL, 'BaseURL');
+        this.adaptationSets = this._buildArray(AdaptationSet, 'AdaptationSet', this.baseUrls?.[0]?.url);
 
         this._init();
     }
@@ -76,20 +77,23 @@ export default class Period extends ModelBase implements ISegmentContainer {
             return null;
         }
 
+        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         const adaptationSet = this.adaptationSets[adaptationSetIndex];
         let segment = adaptationSet?.getSegment(segmentResolveInfo);
         segment ??= SegmentResolver.getSegment(this, segmentResolveInfo);
         return segment;
     }
 
-    public getSegRange(segmentResolveInfo: ISegmentResolveInfo): [number, number] {
-        const { adaptationSetIndex } = segmentResolveInfo;
-        const adaptationSet = this.adaptationSets[adaptationSetIndex];
-        const range = adaptationSet?.getSegRange(segmentResolveInfo) ?? [NaN, NaN];
-        if (isNaN(range[0])) {
+    public getSegRange(index: number = 0): [number, number] {
+        if (index < 0 || index >= this.adaptationSets.length) {
+            return [NaN, NaN];
+        }
+        const adaptationSet = this.adaptationSets[index];
+        const range = adaptationSet?.getSegRange() ?? [NaN, NaN];
+        if (Number.isNaN(range[0])) {
             range[0] = this.segmentTemplate?.startNumber ?? this.segmentList?.startNumber ?? NaN;
         }
-        if (isNaN(range[1])) {
+        if (Number.isNaN(range[1])) {
             range[1] = this.segmentTemplate?.endNumber ?? this.segmentList?.endNumber ?? NaN;
         }
         return range;

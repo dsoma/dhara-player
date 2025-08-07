@@ -9,9 +9,11 @@ export default class SegmentTemplate extends MultiSegmentBase {
     public readonly index?: string;
     public readonly initialization?: string;
     public readonly bitstreamSwitching?: string;
+    public readonly baseUrl?: URL;
 
-    constructor(json: Record<string, any>) {
+    constructor(json: Record<string, any>, baseUrl?: URL) {
         super(json, {});
+        this.baseUrl = baseUrl;
         this._init();
     }
 }

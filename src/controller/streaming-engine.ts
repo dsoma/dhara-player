@@ -87,4 +87,24 @@ export default class StreamingEngine extends EventEmitter {
             } catch { /* ignore */ }
         }
     }
+
+    private _onTimeupdate() {
+        for (const streamer of this._streamers) {
+            streamer.onTimeupdate();
+        }
+
+        const mediaSource = this._nativePlayer.mediaSource;
+        if (this._areAllBuffersClosed() && mediaSource?.readyState === MediaSourceReadyState.OPEN) {
+            mediaSource.endOfStream();
+        }
+    }
+
+    private _areAllBuffersClosed(): boolean {
+        for (const streamer of this._streamers) {
+            if (!streamer.isBufferClosed()) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
