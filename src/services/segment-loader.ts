@@ -95,7 +95,7 @@ export default class SegmentLoader {
  * Loader to load the init segment data and cache it.
  */
 export class InitSegmentLoader extends SegmentLoader {
-    private _cache: Map<string, Uint8Array> = new Map();
+    private readonly _cache: Map<string, Uint8Array> = new Map();
     private _pipeline: IPipeline;
 
     constructor(data?: ILoaderData) {
