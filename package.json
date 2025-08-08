@@ -7,8 +7,9 @@
     "scripts": {
         "start": "tsc && node dist/src/index.js",
         "clean": "rm -rf dist/",
-        "build": "npm run clean && webpack --env mode=production",
-        "build:dev": "npm run clean && webpack --env mode=development --progress",
+        "build": "npm run clean && webpack --env mode=production && npm run build:css",
+        "build:dev": "npm run clean && webpack --env mode=development --progress && npm run build:css",
+        "build:css": "npx @tailwindcss/cli -i demo/css/input.css -o dist/css/styles.css",
         "dev": "npm run build:dev && webpack serve --open",
         "test-prod": "npm run build && npx serve dist",
         "lint": "biome lint .",
@@ -24,8 +25,11 @@
     "license": "Apache-2.0",
     "devDependencies": {
         "@biomejs/biome": "^2.1.2",
+        "@tailwindcss/cli": "^4.1.11",
+        "copy-webpack-plugin": "^13.0.0",
         "html-webpack-plugin": "^5.6.3",
         "husky": "^9.1.7",
+        "tailwindcss": "^4.1.11",
         "ts-loader": "^9.5.2",
         "typescript": "^5.7.3",
         "webpack": "^5.98.0",

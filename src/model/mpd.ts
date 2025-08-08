@@ -54,10 +54,10 @@ export default class Mpd extends ModelBase {
      * EssentialProperty, SupplementalProperty, UTCTiming, LeapSecondInformation
      */
 
-    constructor(json: Record<string, any>, baseURL?: URL) {
+    constructor(json: Record<string, any>, parentBaseUrl?: URL) {
         super(json, typeMap);
 
-        this.baseUrls = this._buildArray(BaseURL, 'BaseURL', baseURL);
+        this.baseUrls = this._createBaseUrls(BaseURL, parentBaseUrl);
         this._create(ProgramInformation, 'ProgramInformation');
         this.periods = this._buildArray(Period, 'Period', this.baseUrls?.[0]?.url);
 
@@ -74,7 +74,6 @@ export default class Mpd extends ModelBase {
             return null;
         }
 
-        segmentResolveInfo.basePath = this.baseUrls?.[0]?.url ?? segmentResolveInfo.basePath;
         const period = this.periods[periodIndex];
         return period?.getSegment(segmentResolveInfo) ?? null;
     }

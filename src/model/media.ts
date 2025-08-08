@@ -72,8 +72,6 @@ export default class Media {
         if (!this._mpd || periodIndex < 0 || periodIndex >= this.periods.length) {
             return null;
         }
-
-        segmentResolveInfo.basePath = this.srcBasePath;
         return this._mpd?.getSegment(segmentResolveInfo) ?? null;
     }
 }

@@ -1,8 +1,9 @@
-import type SegmentBase from './segment-base';
-import type SegmentList from './segment-list';
-import type SegmentTemplate from './segment-template';
+import SegmentBase from './segment-base';
+import SegmentList from './segment-list';
+import SegmentTemplate from './segment-template';
 import type Segment from './segment';
 import type BaseURL from './base-url';
+import type { ISegmentElementClasses } from './base';
 
 export interface ISegmentResolveInfo {
     periodIndex: number;
@@ -13,7 +14,6 @@ export interface ISegmentResolveInfo {
 }
 
 export default interface ISegmentContainer {
-    basePath?: URL;
     baseUrls?: BaseURL[];
     segmentBase?: SegmentBase;
     segmentList?: SegmentList;
@@ -22,3 +22,9 @@ export default interface ISegmentContainer {
     getSegment(segmentResolveInfo: ISegmentResolveInfo): Segment | null;
     getSegRange(index?: number): [number, number];
 }
+
+export const segmentElementClasses: ISegmentElementClasses = {
+    segmentBaseClass: SegmentBase,
+    segmentListClass: SegmentList,
+    segmentTemplateClass: SegmentTemplate,
+};

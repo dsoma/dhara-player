@@ -97,6 +97,7 @@ export default class NativePlayer extends EventEmitter {
             videoElement.height = this._playerContainer.clientHeight;
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
+            videoElement.style.borderRadius = '0.375rem';
         }
 
         this._bindEvents();

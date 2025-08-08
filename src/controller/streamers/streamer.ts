@@ -63,6 +63,10 @@ export default class Streamer {
         }
 
         try {
+            if (!MediaSource.isTypeSupported(mimeCodec)) {
+                throw new Error(`Media source does not support ${mimeCodec}`);
+            }
+
             this._buffer = new Buffer(mimeCodec, mediaSource);
             this._initSegmentLoader.pipeline = this._getNewPipeline();
         } catch (error) {
@@ -137,7 +141,7 @@ export default class Streamer {
     }
 
     protected _process() {
-        // At present, hard code the period and representation indices to 0.
+        // At present, hard code the period to 0 and representation index to the last one.
         const rep = this._getRepresentation();
         if (!rep) {
             return;
@@ -154,7 +158,7 @@ export default class Streamer {
     }
 
     protected _getRepresentation(): Representation | null {
-        this._state.curRepIndex = 0;
+        this._state.curRepIndex = this._adaptationSet.representations.length - 1;
         return this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
     }
 
@@ -190,17 +194,24 @@ export default class Streamer {
             return;
         }
 
-        log.debug(`[${this._name}] loadSegment: [${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] ${segment.url}`);
+        const msg = `[${this._name}] loadSegment: `
+                  + `[${segment.seqNum}] `
+                  + `[${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] `;
+        log.debug(msg);
 
         this._state.segmentLoading = true;
         this._state.curSegmentNum = segment.seqNum;
         this._state.curSegment = segment;
 
-        if (!this._initSegmentLoaded) {
-            await this._loadInitSegment(segment);
-        }
+        try {
+            if (!this._initSegmentLoaded) {
+                await this._loadInitSegment(segment);
+            }
 
-        await (new SegmentLoader()).stream(segment, this._getNewPipeline());
+            await (new SegmentLoader()).stream(segment, this._getNewPipeline());
+        } catch (error) {
+            log.error(`[${this._name}] Failed to load segment: ${error}`);
+        }
 
         this._state.segmentLoading = false;
         this._state.firstSegment = false;
