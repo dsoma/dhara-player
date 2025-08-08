@@ -65,11 +65,9 @@ export default (options) => {
             // new BundleAnalyzerPlugin(),
         ],
         devServer: {
-            static: [
-                {
-                    directory: outputDir,
-                }
-            ],
+            static: [{
+                directory: outputDir,
+            }],
             compress: true,
             port: 9000,
             hot: true,

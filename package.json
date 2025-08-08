@@ -9,7 +9,7 @@
         "clean": "rm -rf dist/",
         "build": "npm run clean && webpack --env mode=production && npm run build:css",
         "build:dev": "npm run clean && webpack --env mode=development --progress && npm run build:css",
-        "build:css": "npx @tailwindcss/cli -i demo/css/input.css -o dist/css/dhara-player.css",
+        "build:css": "npx @tailwindcss/cli -i demo/css/input.css -o dist/css/styles.css",
         "dev": "npm run build:dev && webpack serve --open",
         "test-prod": "npm run build && npx serve dist",
         "lint": "biome lint .",
