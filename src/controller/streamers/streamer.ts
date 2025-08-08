@@ -63,6 +63,10 @@ export default class Streamer {
         }
 
         try {
+            if (!MediaSource.isTypeSupported(mimeCodec)) {
+                throw new Error(`Media source does not support ${mimeCodec}`);
+            }
+
             this._buffer = new Buffer(mimeCodec, mediaSource);
             this._initSegmentLoader.pipeline = this._getNewPipeline();
         } catch (error) {
