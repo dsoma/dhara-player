@@ -1,7 +1,6 @@
 import type Media from '../../model/media';
 import type AdaptationSet from '../../model/adaptation-set';
 import type Representation from '../../model/representation';
-import type Period from '../../model/period';
 import type Segment from '../../model/segment';
 import type NativePlayer from '../native-player';
 import SegmentLoader, { InitSegmentLoader } from '../../services/segment-loader';
@@ -9,19 +8,7 @@ import type { IPipeline } from '../../services/segment-loader';
 import Buffer from '../buffer';
 import type { BufferSink } from '../buffer';
 import log from 'loglevel';
-import type{ ISegmentResolveInfo } from '../../model/segment-container';
-
-class StreamerState {
-    public curRep: Representation | null = null;
-    public curPeriod: Period | null = null;
-    public curSegment: Segment | null = null;
-    public curPeriodIndex: number = 0;
-    public curAdaptationSetIndex: number = 0;
-    public curRepIndex: number = 0;
-    public curSegmentNum: number = 0;
-    public segmentLoading: boolean = false;
-    public firstSegment: boolean = true;
-}
+import StreamerState from './streamer-state';
 
 const PROCESS_TICK = 20; // in milliseconds
 const MAX_BUFFER_LENGTH = 60; // in seconds
@@ -36,7 +23,7 @@ export default class Streamer {
     protected readonly _nativePlayer: NativePlayer;
     protected _adaptationSet: AdaptationSet;
     protected _buffer: Buffer | null = null;
-    protected _state: StreamerState = new StreamerState();
+    protected _state: StreamerState;
     protected _timer: NodeJS.Timeout | null = null;
     protected _name: string = this.constructor.name;
     protected _initSegmentLoader: InitSegmentLoader = new InitSegmentLoader();
@@ -48,7 +35,7 @@ export default class Streamer {
         this._media = media;
         this._nativePlayer = nativePlayer;
         this._adaptationSet = adaptationSet;
-        this._state.curAdaptationSetIndex = adaptationSetIndex;
+        this._state = new StreamerState(adaptationSet, adaptationSetIndex);
     }
 
     public initialize(): boolean {
@@ -75,13 +62,7 @@ export default class Streamer {
             return false;
         }
 
-        this._state.curPeriodIndex = 0;
-        this._state.curPeriod = this._media.periods?.[this._state.curPeriodIndex] ?? null;
-        this._adaptationSet
-            = this._media.getAdaptationSets(this._state.curPeriodIndex)?.[this._state.curAdaptationSetIndex] ?? null;
-        this._state.curRep = this._adaptationSet?.representations?.[this._state.curRepIndex] ?? null;
-        this._state.curSegmentNum = this._adaptationSet.getSegRange()[0] ?? NaN;
-
+        this._state.initialize(this._media);
         return true;
     }
 
@@ -159,7 +140,7 @@ export default class Streamer {
 
     protected _getRepresentation(): Representation | null {
         this._state.curRepIndex = this._adaptationSet.representations.length - 1;
-        return this._adaptationSet.representations?.[this._state.curRepIndex] ?? null;
+        return this._state.rep;
     }
 
     protected _getNextSegmentNum(): number {
@@ -172,7 +153,7 @@ export default class Streamer {
         if (!rep) {
             return null;
         }
-        return this._media.getSegment(this._getSegmentResolveInfo(segmentNum));
+        return this._media.getSegment(this._state.getSegmentResolveInfo(segmentNum));
     }
 
     protected _shouldLoadSegment(segmentNum: number): boolean {
@@ -199,9 +180,7 @@ export default class Streamer {
                   + `[${segment.startTime.toFixed(3)} - ${segment.endTime.toFixed(3)}] `;
         log.debug(msg);
 
-        this._state.segmentLoading = true;
-        this._state.curSegmentNum = segment.seqNum;
-        this._state.curSegment = segment;
+        this._state.onSegmentLoadStart(segment);
 
         try {
             if (!this._initSegmentLoaded) {
@@ -213,12 +192,10 @@ export default class Streamer {
             log.error(`[${this._name}] Failed to load segment: ${error}`);
         }
 
-        this._state.segmentLoading = false;
-        this._state.firstSegment = false;
+        this._state.onSegmentLoadEnd();
 
-        const range = this._adaptationSet.getSegRange();
-        const periodCount = this._media.periods.length;
-        if (this._state.curSegmentNum === range[1] && this._state.curPeriodIndex === periodCount - 1) {
+        // If this is the last segment of the media, then notify the buffer to flush and close.
+        if (this._state.isLastSegment(this._media.periods.length)) {
             this._buffer?.endOfStream();
         }
     }
@@ -226,15 +203,5 @@ export default class Streamer {
     protected async _loadInitSegment(segment: Segment) {
         await this._initSegmentLoader.load(segment);
         this._initSegmentLoaded = true;
-    }
-
-    protected _getSegmentResolveInfo(segmentNum?: number): ISegmentResolveInfo {
-        const state = this._state;
-        return {
-            periodIndex: state.curPeriodIndex,
-            adaptationSetIndex: state.curAdaptationSetIndex,
-            representationIndex: state.curRepIndex,
-            segmentNum: segmentNum ?? state.curSegmentNum
-        };
     }
 }

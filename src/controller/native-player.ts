@@ -98,6 +98,11 @@ export default class NativePlayer extends EventEmitter {
             videoElement.style.width = '100%';
             videoElement.style.height = '100%';
             videoElement.style.borderRadius = '0.375rem';
+        } else if (this._type === MediaType.AUDIO) {
+            const audioElement = this._mediaElement as HTMLAudioElement;
+            audioElement.style.width = '100%';
+            audioElement.style.borderRadius = '0.375rem';
+            this._playerContainer.style.removeProperty('aspect-ratio');
         }
 
         this._bindEvents();
