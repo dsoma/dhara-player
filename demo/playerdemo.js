@@ -3,6 +3,10 @@ class PlayerDemo {
     constructor() {
         this.playerContainer = document.getElementById('player-container');
         this.player = new window.DHARA.Player(this.playerContainer);
+
+        // For easier debugging & testing.
+        window.dp  = this.player;
+        window.dpe = this.player.element();
     }
 
     selectSample(id) {

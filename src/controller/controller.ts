@@ -13,6 +13,8 @@ enum DPlayerState {
     FETCHING_SRC = 'FetchingSrc',
     PREPARING = 'Preparing',
     READY = 'Ready',
+    STREAMING = 'Streaming',
+    END_OF_STREAM = 'EndOfStream',
     ERROR = 'Error',
 }
 
@@ -42,6 +44,10 @@ export default class DharaPlayerController extends EventEmitter {
         this._media.destroy();
         this._streamingEngine?.destroy();
         this._streamingEngine = null;
+    }
+
+    public element(): HTMLMediaElement | null {
+        return this._nativePlayer?.mediaElement ?? null;
     }
 
     private async setState(state: DPlayerState, data?: any) {
@@ -92,7 +98,26 @@ export default class DharaPlayerController extends EventEmitter {
         }
 
         this._streamingEngine = new StreamingEngine(this._media, this._nativePlayer);
-        this._streamingEngine.on(StreamingEngineEvent.ERROR, (errMsg: string) => { this.error = errMsg; });
+
+        this._streamingEngine.on(StreamingEngineEvent.ERROR, (errMsg: string) => {
+            this.error = errMsg;
+        });
+
+        this._streamingEngine.on(StreamingEngineEvent.STREAMING, () => {
+            this.setState(DPlayerState.STREAMING);
+        });
+
+        this._streamingEngine.on(StreamingEngineEvent.END_OF_STREAM, () => {
+            this.setState(DPlayerState.END_OF_STREAM);
+        });
+    }
+
+    private _onStreaming() {
+        //
+    }
+
+    private _onEndOfStream() {
+        //
     }
 
     private async _onError(data?: any) {
