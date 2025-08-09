@@ -6,60 +6,103 @@ import Segment from "../../model/segment";
 import { ISegmentResolveInfo } from "../../model/segment-container";
 
 export default class StreamerState {
-    public readonly curAdaptationSet: AdaptationSet;
-    public readonly curAdaptationSetIndex: number;
+    private readonly _curAdaptationSet: AdaptationSet;
+    private readonly _curAdaptationSetIndex: number;
 
-    public curPeriod: Period | null = null;
-    public curRep: Representation | null = null;
-    public curSegment: Segment | null = null;
+    private _curRep: Representation | null = null;
+    private _curSegment: Segment | null = null;
 
-    public curPeriodIndex: number = 0;
-    public curRepIndex: number = 0;
-    public curSegmentNum: number = 0;
+    private _firstPeriod: Period | null = null;
+    private _lastPeriod: Period | null = null;
 
-    public segmentLoading: boolean = false;
-    public firstSegment: boolean = true;
+    private _curPeriodIndex: number = 0;
+    private _curRepIndex: number = 0;
+    private _curSegmentNum: number = NaN;
+
+    private _segmentLoading: boolean = false;
+    private _endOfStream: boolean = false;
+    private _continuous: boolean = false;
 
     constructor(adaptationSet: AdaptationSet, adaptationSetIndex: number) {
-        this.curAdaptationSet = adaptationSet;
-        this.curAdaptationSetIndex = adaptationSetIndex;
+        this._curAdaptationSet = adaptationSet;
+        this._curAdaptationSetIndex = adaptationSetIndex;
     }
 
     public initialize(media: Media) {
-        this.curPeriodIndex = 0;
-        this.curRepIndex = 0;
-        this.curPeriod = media.periods?.[0] ?? null;
-        this.curRep = this.curAdaptationSet?.representations?.[0] ?? null;
-        this.curSegmentNum = this.curAdaptationSet.getSegRange()[0] ?? NaN;
+        this._curPeriodIndex = 0;
+        this._firstPeriod = media.periods?.[0] ?? null;
+        this._lastPeriod  = media.periods?.[media.periods.length - 1] ?? null;
+
+        this.repIndex = 0;
+        this._curSegmentNum = NaN;
+        this._continuous = false;
     }
 
     public get rep(): Representation | null {
-        this.curRep = this.curAdaptationSet?.representations?.[this.curRepIndex] ?? null;
-        return this.curRep;
+        return this._curRep;
+    }
+
+    public set repIndex(repIndex: number) {
+        this._curRepIndex = repIndex;
+        this._curRep = this._curAdaptationSet?.representations?.[this._curRepIndex] ?? null;
     }
 
     public onSegmentLoadStart(segment: Segment) {
-        this.segmentLoading = true;
-        this.curSegment = segment;
-        this.curSegmentNum = segment.seqNum;
+        this._segmentLoading = true;
+        this._curSegment = segment;
+        this._curSegmentNum = segment.seqNum;
+        this._continuous = true;
     }
 
     public onSegmentLoadEnd() {
-        this.segmentLoading = false;
-        this.firstSegment = false;
+        this._segmentLoading = false;
+        this._continuous = true;
     }
 
-    public isLastSegment(periodCount: number): boolean {
-        const range = this.curAdaptationSet.getSegRange();
-        return this.curSegmentNum === range[1] && this.curPeriodIndex === periodCount - 1;
+    public isFirstSegment(): boolean {
+        return this._curSegmentNum === this.firstSegmentNum;
+    }
+
+    public isLastSegment(): boolean {
+        return this._curSegmentNum === this.lastSegmentNum;
+    }
+
+    public get firstSegmentNum(): number {
+        const range = this._firstPeriod?.getSegRange(this._curAdaptationSetIndex);
+        return range?.[0] ?? NaN;
+    }
+
+    public get lastSegmentNum(): number {
+        const range = this._lastPeriod?.getSegRange(this._curAdaptationSetIndex) ?? [];
+        return range?.[1] ?? NaN;
+    }
+
+    public get nextSegmentNum(): number {
+        return this._curSegmentNum + 1;
+    }
+
+    public shouldLoadSegment(): boolean {
+        return !this._endOfStream && !this._segmentLoading && this._curRep !== null;
+    }
+
+    public get continuous(): boolean {
+        return this._continuous;
+    }
+
+    public set continuous(value: boolean) {
+        this._continuous = value;
+    }
+
+    public set endOfStream(value: boolean) {
+        this._endOfStream = value;
     }
 
     public getSegmentResolveInfo(segmentNum?: number): ISegmentResolveInfo {
         return {
-            periodIndex: this.curPeriodIndex,
-            adaptationSetIndex: this.curAdaptationSetIndex,
-            representationIndex: this.curRepIndex,
-            segmentNum: segmentNum ?? this.curSegmentNum
+            periodIndex: this._curPeriodIndex,
+            adaptationSetIndex: this._curAdaptationSetIndex,
+            representationIndex: this._curRepIndex,
+            segmentNum: segmentNum ?? this._curSegmentNum
         };
     }
 }
