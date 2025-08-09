@@ -9,6 +9,8 @@ import { toTitleCase } from '../utils';
 
 export enum StreamingEngineEvent {
     ERROR = 'error',
+    STREAMING = 'streaming',
+    END_OF_STREAM = 'endOfStream',
 }
 
 export default class StreamingEngine extends EventEmitter {
@@ -88,14 +90,18 @@ export default class StreamingEngine extends EventEmitter {
         }
     }
 
-    private _onTimeupdate() {
-        for (const streamer of this._streamers) {
-            streamer.onTimeupdate();
-        }
+    private _onPlay(...args: any[]) {
+        this._sendEventToStreamers('onPlay', ...args);
+        this.emit(StreamingEngineEvent.STREAMING);
+    }
+
+    private _onTimeupdate(...args: any[]) {
+        this._sendEventToStreamers('onTimeupdate', ...args);
 
         const mediaSource = this._nativePlayer.mediaSource;
         if (this._areAllBuffersClosed() && mediaSource?.readyState === MediaSourceReadyState.OPEN) {
             mediaSource.endOfStream();
+            this.emit(StreamingEngineEvent.END_OF_STREAM);
         }
     }
 

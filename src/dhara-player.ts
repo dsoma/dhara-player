@@ -11,6 +11,10 @@ export default class DharaPlayer {
         this._controller.setSource(sourceUrl);
     }
 
+    public element(): HTMLMediaElement | null {
+        return this._controller.element();
+    }
+
     public destroy() {
         this._controller.destroy();
     }
