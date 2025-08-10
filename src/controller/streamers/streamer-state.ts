@@ -1,9 +1,9 @@
-import AdaptationSet from "../../model/adaptation-set";
-import Media from "../../model/media";
-import Period from "../../model/period";
-import Representation from "../../model/representation";
-import Segment from "../../model/segment";
-import { ISegmentResolveInfo } from "../../model/segment-container";
+import type AdaptationSet from "../../model/adaptation-set";
+import type Media from "../../model/media";
+import type Period from "../../model/period";
+import type Representation from "../../model/representation";
+import type Segment from "../../model/segment";
+import type { ISegmentResolveInfo } from "../../model/segment-container";
 
 export default class StreamerState {
     private readonly _curAdaptationSet: AdaptationSet;
