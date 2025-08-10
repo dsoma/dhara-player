@@ -144,10 +144,10 @@ export class InitSegmentLoader extends SegmentLoader {
             return;
         }
 
-        let data: Uint8Array = new Uint8Array();
-        for await (const chunk of readableStream) {
-            data = new Uint8Array([...data, ...new Uint8Array(chunk)]);
-        }
+        // readStream() does a copy of the data.
+        // However, this is init segment data which would be smaller in size
+        // and the frequency of init segment loading is low.
+        const data = await this._readStream(readableStream);
 
         // Cache the init segment data.
         this._cache.set(initSegmentUrl.toString(), data);
@@ -156,5 +156,23 @@ export class InitSegmentLoader extends SegmentLoader {
         if (this._pipeline.sink) {
             await this._writeToSink(data, this._pipeline.sink);
         }
+    }
+
+    private async _readStream(readableStream: ReadableStream): Promise<Uint8Array> {
+        const reader = readableStream.getReader();
+        let data: Uint8Array = new Uint8Array();
+
+        // We wish to use async iterator, but it is not supported in Safari.
+        // So we use a reader althogh less elegant
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            data = new Uint8Array([...data, ...new Uint8Array(value)]);
+        }
+
+        reader.cancel();
+        return data;
     }
 }

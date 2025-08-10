@@ -136,9 +136,7 @@ export default class Streamer {
             return;
         }
 
-        if (this._isSegmentAvailable(segmentNum)) {
-            this._loadSegment(this._getSegment(segmentNum));
-        }
+        this._loadSegment(this._getSegment(segmentNum));
     }
 
     protected _determineRepresentation(): Representation | null {
@@ -153,9 +151,6 @@ export default class Streamer {
         }
 
         return this._state.shouldLoadSegment();
-
-        // const range = this._adaptationSet.getSegRange();
-        // return segmentNum >= range[0] && segmentNum <= range[1];
     }
 
     protected _getNextSegmentNum(targetPosition: number): number {
@@ -171,10 +166,6 @@ export default class Streamer {
         // If discontinuous, then probably we are at the beginning.
         // Otherwise, just move forward.
         return state.continuous ? state.nextSegmentNum : state.firstSegmentNum;
-    }
-
-    protected _isSegmentAvailable(segmentNum: number): boolean {
-        return true; // always true in VOD
     }
 
     protected _getSegment(segmentNum: number): Segment | null {
