@@ -21,7 +21,6 @@ export default class StreamerState {
 
     private _segmentLoading: boolean = false;
     private _endOfStream: boolean = false;
-    private _continuous: boolean = false;
 
     constructor(adaptationSet: AdaptationSet, adaptationSetIndex: number) {
         this._curAdaptationSet = adaptationSet;
@@ -35,7 +34,6 @@ export default class StreamerState {
 
         this.repIndex = 0;
         this._curSegmentNum = NaN;
-        this._continuous = false;
     }
 
     public get rep(): Representation | null {
@@ -51,12 +49,10 @@ export default class StreamerState {
         this._segmentLoading = true;
         this._curSegment = segment;
         this._curSegmentNum = segment.seqNum;
-        this._continuous = true;
     }
 
     public onSegmentLoadEnd() {
         this._segmentLoading = false;
-        this._continuous = true;
     }
 
     public isFirstSegment(): boolean {
@@ -77,20 +73,36 @@ export default class StreamerState {
         return range?.[1] ?? NaN;
     }
 
+    public get curSegmentNum(): number {
+        return this._curSegmentNum;
+    }
+
     public get nextSegmentNum(): number {
         return this._curSegmentNum + 1;
     }
 
-    public shouldLoadSegment(): boolean {
-        return !this._endOfStream && !this._segmentLoading && this._curRep !== null;
+    public getNextSegmentNumInSequence(): number {
+        if (Number.isNaN(this._curSegmentNum)) {
+            return this.firstSegmentNum;
+        }
+
+        if (this._segmentLoading) {
+            return this._curSegmentNum;
+        }
+
+        return this.nextSegmentNum;
     }
 
-    public get continuous(): boolean {
-        return this._continuous;
-    }
+    public shouldLoadSegment(nextSegmentNum: number): boolean {
+        if (this._endOfStream || this._curRep === null) {
+            return false;
+        }
 
-    public set continuous(value: boolean) {
-        this._continuous = value;
+        if (this._curSegmentNum === nextSegmentNum) {
+            return false;
+        }
+
+        return !this._segmentLoading;
     }
 
     public set endOfStream(value: boolean) {

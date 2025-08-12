@@ -9,6 +9,7 @@ import Buffer from '../buffer';
 import type { BufferSink } from '../buffer';
 import log from 'loglevel';
 import StreamerState from './streamer-state';
+import { MediaElement } from '../native-player';
 
 const PROCESS_TICK = 20; // in milliseconds
 const MAX_BUFFER_LENGTH = 60; // in seconds
@@ -21,6 +22,7 @@ const MAX_BUFFER_LENGTH = 60; // in seconds
 export default class Streamer {
     protected readonly _media: Media;
     protected readonly _nativePlayer: NativePlayer;
+    protected readonly _mediaElement: MediaElement;
     protected _adaptationSet: AdaptationSet;
     protected _buffer: Buffer | null = null;
     protected _state: StreamerState;
@@ -34,6 +36,7 @@ export default class Streamer {
         nativePlayer: NativePlayer, adaptationSetIndex: number) {
         this._media = media;
         this._nativePlayer = nativePlayer;
+        this._mediaElement = nativePlayer.mediaElement;
         this._adaptationSet = adaptationSet;
         this._state = new StreamerState(adaptationSet, adaptationSetIndex);
     }
@@ -82,13 +85,22 @@ export default class Streamer {
         this.stop();
     }
 
+    public onSeeking() {
+        const seekPosition = this._mediaElement?.currentTime;
+        log.debug(`[${this._name}] onSeeking: ${seekPosition}`);
+    }
+
+    public onSeeked(seekPosition: number) {
+        log.debug(`[${this._name}] onSeeked: ${seekPosition}`);
+    }
+
     public onEnded() {
         log.debug(`[${this._name}] onEnded`);
         this.stop();
     }
 
     public onTimeupdate() {
-        // const currentTime = this._nativePlayer.mediaElement?.currentTime ?? 0;
+        // const currentTime = this._mediaElement?.currentTime ?? 0;
     }
 
     public start() {
@@ -127,16 +139,20 @@ export default class Streamer {
             return;
         }
 
-        if (!this._shouldLoadSegment()) {
+        const nextSegmentNum = this._getNextSegmentNum(targetPosition);
+        if (Number.isNaN(nextSegmentNum)) {
             return;
         }
 
-        const segmentNum = this._getNextSegmentNum(targetPosition);
-        if (Number.isNaN(segmentNum)) {
+        if (this._shouldAbortSegmentLoad(nextSegmentNum)) {
+            this._abortSegmentLoad();
+        }
+
+        if (!this._shouldLoadSegment(nextSegmentNum)) {
             return;
         }
 
-        this._loadSegment(this._getSegment(segmentNum));
+        this._loadSegment(this._getSegment(nextSegmentNum));
     }
 
     protected _determineRepresentation(): Representation | null {
@@ -145,27 +161,30 @@ export default class Streamer {
         return this._state.rep;
     }
 
-    protected _shouldLoadSegment(): boolean {
+    protected _shouldLoadSegment(segmentNum: number): boolean {
         if (this._nativePlayer.bufferLength >= MAX_BUFFER_LENGTH) {
             return false;
         }
-
-        return this._state.shouldLoadSegment();
+        return this._state.shouldLoadSegment(segmentNum);
     }
 
     protected _getNextSegmentNum(targetPosition: number): number {
-        const state = this._state;
-
         // If discontinuous due to position (ex: seek):
-        if (!state.continuous && !Number.isNaN(targetPosition)) {
+        if (!Number.isNaN(targetPosition)) {
             // Check from the target position.
             // return state.getNextSegmentNum(targetPosition);
             return NaN;
         }
 
-        // If discontinuous, then probably we are at the beginning.
-        // Otherwise, just move forward.
-        return state.continuous ? state.nextSegmentNum : state.firstSegmentNum;
+        return this._state.getNextSegmentNumInSequence();
+    }
+
+    protected _shouldAbortSegmentLoad(nextSegmentNum: number): boolean {
+        return this._state.curSegmentNum !== nextSegmentNum;
+    }
+
+    protected _abortSegmentLoad() {
+        // Implement this.
     }
 
     protected _getSegment(segmentNum: number): Segment | null {
