@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { MediaType } from '../model/media';
 import log from 'loglevel';
 
-type MediaElement = HTMLAudioElement | HTMLVideoElement | null;
+export type MediaElement = HTMLAudioElement | HTMLVideoElement | null;
 
 export enum NativePlayerEvent {
     ERROR = 'error',
@@ -10,6 +10,8 @@ export enum NativePlayerEvent {
     PAUSE = 'pause',
     PLAY = 'play',
     PLAYING = 'playing',
+    SEEKING = 'seeking',
+    SEEKED = 'seeked',
     SOURCE_CLOSE = 'sourceclose',
     SOURCE_ENDED = 'sourceended',
     SOURCE_OPEN = 'sourceopen',
@@ -168,6 +170,8 @@ export default class NativePlayer extends EventEmitter {
             NativePlayerEvent.PAUSE,
             NativePlayerEvent.PLAY,
             NativePlayerEvent.PLAYING,
+            NativePlayerEvent.SEEKING,
+            NativePlayerEvent.SEEKED,
             NativePlayerEvent.TIMEUPDATE,
             NativePlayerEvent.VOLUMECHANGE,
             NativePlayerEvent.WAITING,

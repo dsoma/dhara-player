@@ -1,12 +1,18 @@
 import log from 'loglevel';
+import { StreamType } from '../model/adaptation-set';
 
 export default class Buffer {
+    public readonly streamType: StreamType;
     private readonly _srcBuffer: SourceBuffer;
+    private readonly _mediaSource: MediaSource;
     private _queue: Uint8Array[] = [];
     private _endOfStream: boolean = false;
     private _closed: boolean = false;
+    private _aborted: boolean = false;
 
-    constructor(mimeCodec: string, mediaSource: MediaSource) {
+    constructor(streamType: StreamType, mimeCodec: string, mediaSource: MediaSource) {
+        this.streamType = streamType;
+        this._mediaSource = mediaSource;
         this._srcBuffer = mediaSource.addSourceBuffer(mimeCodec);
         this._srcBuffer.addEventListener('updateend', () => { this._onUpdateEnd(); });
         this._srcBuffer.addEventListener('error', (event) => { this._onError(event); });
@@ -27,12 +33,23 @@ export default class Buffer {
         this._queue = [];
     }
 
-    public abort() {
+    public async abort(): Promise<void> {
+        if (this._mediaSource.readyState !== 'open') {
+            log.warn('MSE is not open');
+            return;
+        }
+
         this.clear();
+        this._aborted = true;
         this._srcBuffer.abort();
     }
 
+    public reset() {
+        this._aborted = false;
+    }
+
     public getNewSink(): WritableStream {
+        this.reset();
         return new BufferSink(this);
     }
 
@@ -45,8 +62,24 @@ export default class Buffer {
         return this._closed && this._endOfStream;
     }
 
+    public buffered(): TimeRanges {
+        return this._srcBuffer.buffered;
+    }
+
+    public printBufferedRanges() {
+        const buffered = this._srcBuffer.buffered;
+        const color = this.streamType === 'video' ? 'blue' : 'green';
+        let msg = `%c [Buffer][${this.streamType}] Buffered ranges: `;
+        for (let i = 0; i < buffered.length; i++) {
+            const start = buffered.start(i);
+            const end = buffered.end(i);
+            msg += `[${start} - ${end}] `;
+        }
+        log.debug(msg, `color: ${color}; font-weight: bold`);
+    }
+
     private _processQueue() {
-        if (this._srcBuffer.updating || !this._queue.length) {
+        if (this._srcBuffer.updating || !this._queue.length || this._aborted) {
             return;
         }
 
@@ -56,7 +89,7 @@ export default class Buffer {
                 this._srcBuffer.appendBuffer(chunk);
             }
         } catch (error) {
-            log.error('[Buffer] SrcBuffer append failed: ', error);
+            log.error(`[Buffer][${this.streamType}] SrcBuffer append failed: `, error);
         }
     }
 
@@ -66,8 +99,8 @@ export default class Buffer {
     }
 
     private _onError(event: Event) {
-        this.clear();
-        log.error('[Buffer] SrcBuffer error: ', event);
+        log.error(`[Buffer][${this.streamType}] SrcBuffer error: `, event);
+        this.abort();
     }
 
     private _closeIfDone() {

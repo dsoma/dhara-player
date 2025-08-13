@@ -9,9 +9,12 @@ import Buffer from '../buffer';
 import type { BufferSink } from '../buffer';
 import log from 'loglevel';
 import StreamerState from './streamer-state';
+import { MediaElement } from '../native-player';
+import { StreamType } from '../../model/adaptation-set';
 
 const PROCESS_TICK = 20; // in milliseconds
 const MAX_BUFFER_LENGTH = 60; // in seconds
+const ABORT_FOR_SEEK = 'abort-for-seek';
 
 /**
  * Streamer is a class that handles the streaming of a media stream.
@@ -19,22 +22,28 @@ const MAX_BUFFER_LENGTH = 60; // in seconds
  * This is a base class for all streamers.
  */
 export default class Streamer {
+    protected readonly _streamType: StreamType;
     protected readonly _media: Media;
     protected readonly _nativePlayer: NativePlayer;
+    protected readonly _mediaElement: MediaElement;
     protected _adaptationSet: AdaptationSet;
     protected _buffer: Buffer | null = null;
     protected _state: StreamerState;
     protected _timer: NodeJS.Timeout | null = null;
     protected _name: string = this.constructor.name;
-    protected _initSegmentLoader: InitSegmentLoader = new InitSegmentLoader();
+    protected _initSegmentLoader: InitSegmentLoader;
     protected _initSegmentLoaded: boolean = false;
     protected _curBufferSink: BufferSink | null = null;
+    protected _segmentLoader: SegmentLoader | null = null;
 
-    constructor(media: Media, adaptationSet: AdaptationSet,
+    constructor(streamType: StreamType, media: Media, adaptationSet: AdaptationSet,
         nativePlayer: NativePlayer, adaptationSetIndex: number) {
+        this._streamType = streamType;
         this._media = media;
         this._nativePlayer = nativePlayer;
+        this._mediaElement = nativePlayer.mediaElement;
         this._adaptationSet = adaptationSet;
+        this._initSegmentLoader = new InitSegmentLoader();
         this._state = new StreamerState(adaptationSet, adaptationSetIndex);
     }
 
@@ -54,7 +63,7 @@ export default class Streamer {
                 throw new Error(`Media source does not support ${mimeCodec}`);
             }
 
-            this._buffer = new Buffer(mimeCodec, mediaSource);
+            this._buffer = new Buffer(this._streamType, mimeCodec, mediaSource);
             this._initSegmentLoader.pipeline = this._getNewPipeline();
         } catch (error) {
             log.error(`[Streamer] Failed to create buffer for ${mimeCodec}`);
@@ -74,6 +83,10 @@ export default class Streamer {
 
     public onPlay() {
         log.debug(`[${this._name}] onPlay`);
+        if (this._state.seeking) {
+            return;
+        }
+
         this.start();
     }
 
@@ -82,13 +95,48 @@ export default class Streamer {
         this.stop();
     }
 
+    public async onSeeking() {
+        this._state.seeking = true;
+        const seekPosition = this._mediaElement?.currentTime ?? NaN;
+        log.debug(`[${this._name}] onSeeking: ${seekPosition}`);
+
+        const targetPosition = this._getTargetPosition(seekPosition);
+        const nextSegment = this._getNextSegmentForPosition(targetPosition);
+        if (!nextSegment) {
+            return;
+        }
+
+        this.stop();
+        this._abortLoadingIfRequired(nextSegment);
+        log.debug(`[${this._name}] onSeeking: nextSegment = ${nextSegment.seqNum}`);
+        this._buffer?.reset();
+
+        if (this._shouldLoadSegment(nextSegment.seqNum)) {
+            await this._loadSegment(nextSegment);
+        }
+
+        this.start();
+    }
+
+    public onSeeked() {
+        this._state.seeking = false;
+        log.debug(`[${this._name}] onSeeked`);
+        // cleanup
+    }
+
     public onEnded() {
         log.debug(`[${this._name}] onEnded`);
         this.stop();
     }
 
+    public onError(error: Error) {
+        log.error(`[${this._name}] onError: ${error}`);
+        this.stop();
+        this._segmentLoader = null;
+    }
+
     public onTimeupdate() {
-        // const currentTime = this._nativePlayer.mediaElement?.currentTime ?? 0;
+        // const currentTime = this._mediaElement?.currentTime ?? 0;
     }
 
     public start() {
@@ -121,22 +169,22 @@ export default class Streamer {
         };
     }
 
-    protected _process(targetPosition = NaN) {
+    protected _process() {
         const rep = this._determineRepresentation();
         if (!rep) {
             return;
         }
 
-        if (!this._shouldLoadSegment()) {
+        const nextSegmentNum = this._state.getNextSegmentNumInSequence();
+        if (Number.isNaN(nextSegmentNum)) {
             return;
         }
 
-        const segmentNum = this._getNextSegmentNum(targetPosition);
-        if (Number.isNaN(segmentNum)) {
+        if (!this._shouldLoadSegment(nextSegmentNum)) {
             return;
         }
 
-        this._loadSegment(this._getSegment(segmentNum));
+        this._loadSegment(this._getSegment(nextSegmentNum));
     }
 
     protected _determineRepresentation(): Representation | null {
@@ -145,27 +193,60 @@ export default class Streamer {
         return this._state.rep;
     }
 
-    protected _shouldLoadSegment(): boolean {
+    protected _shouldLoadSegment(segmentNum: number): boolean {
         if (this._nativePlayer.bufferLength >= MAX_BUFFER_LENGTH) {
             return false;
         }
-
-        return this._state.shouldLoadSegment();
+        return this._state.shouldLoadSegment(segmentNum);
     }
 
-    protected _getNextSegmentNum(targetPosition: number): number {
-        const state = this._state;
-
-        // If discontinuous due to position (ex: seek):
-        if (!state.continuous && !Number.isNaN(targetPosition)) {
-            // Check from the target position.
-            // return state.getNextSegmentNum(targetPosition);
-            return NaN;
+    protected _abortLoadingIfRequired(segment: Segment) {
+        if (!segment || this._state.curSegmentNum === segment.seqNum) {
+            return;
         }
 
-        // If discontinuous, then probably we are at the beginning.
-        // Otherwise, just move forward.
-        return state.continuous ? state.nextSegmentNum : state.firstSegmentNum;
+        this._abortSegmentLoad();
+    }
+
+    protected _abortSegmentLoad() {
+        this._segmentLoader?.abort(ABORT_FOR_SEEK);
+        this._initSegmentLoaded = false;
+        this._state.onSegmentLoadAborted();
+    }
+
+    protected _getNextSegmentForPosition(targetPosition: number): Segment | null {
+        if (Number.isNaN(targetPosition)) {
+            return null;
+        }
+
+        const resolveInfo = this._state.getSegmentResolveInfoForPosition(targetPosition);
+        return this._media.getSegmentForPosition(targetPosition, resolveInfo);
+    }
+
+    protected _getTargetPosition(seekPosition: number): number {
+        let adjustedTargetPosition = seekPosition;
+
+        const buffered = this._buffer?.buffered();
+        if (!buffered) {
+            return seekPosition;
+        }
+
+        for (let i = 0; i < buffered.length; i++) {
+            const rangeStart = buffered.start(i);
+            const rangeEnd   = buffered.end(i);
+
+            if (seekPosition < rangeStart) {
+                adjustedTargetPosition = seekPosition;
+                break;
+            }
+
+            if (rangeStart <= seekPosition && rangeEnd >= seekPosition) {
+                adjustedTargetPosition = rangeEnd;
+                break;
+            }
+        }
+
+        return adjustedTargetPosition;
     }
 
     protected _getSegment(segmentNum: number): Segment | null {
@@ -191,17 +272,28 @@ export default class Streamer {
                 await this._loadInitSegment(segment);
             }
 
-            await (new SegmentLoader()).stream(segment, this._getNewPipeline());
+            this._segmentLoader = new SegmentLoader();
+            const result = await this._segmentLoader.stream(segment, this._getNewPipeline());
+            if (result instanceof Error || result === ABORT_FOR_SEEK) {
+                throw result;
+            }
+
+            this._state.onSegmentLoadEnd();
+
+            // If this is the last segment of the media, then notify the buffer to flush and close.
+            if (this._state.isLastSegment()) {
+                this._endOfStream();
+            }
         } catch (error) {
-            log.error(`[${this._name}] Failed to load segment: ${error}`);
+            if ((error instanceof Error && error.name === 'AbortError')
+                || error === ABORT_FOR_SEEK) {
+                this._state.onSegmentLoadAborted();
+            } else {
+                log.error(`[${this._name}] Failed to load segment: ${error}`);
+            }
         }
 
-        this._state.onSegmentLoadEnd();
-
-        // If this is the last segment of the media, then notify the buffer to flush and close.
-        if (this._state.isLastSegment()) {
-            this._endOfStream();
-        }
+        this._buffer?.printBufferedRanges();
     }
 
     protected async _loadInitSegment(segment: Segment) {

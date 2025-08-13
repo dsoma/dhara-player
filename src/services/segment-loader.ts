@@ -15,9 +15,15 @@ export interface IPipeline {
  */
 export default class SegmentLoader {
     protected _data: ILoaderData;
+    protected _abortController: AbortController;
+    protected _abortSignal: AbortSignal;
+    protected _aborted: boolean = false;
+    protected _abortReason: string = '';
 
     constructor(data?: ILoaderData) {
         this._data = data ?? {};
+        this._abortController = new AbortController();
+        this._abortSignal = this._abortController.signal;
     }
 
     /**
@@ -32,7 +38,9 @@ export default class SegmentLoader {
      *
      * Make sure that the transformers and the sink are not locked.
      */
-    public async stream(segment: Segment, pipeline?: IPipeline, url?: URL): Promise<ReadableStream | null> {
+    public async stream(segment: Segment,
+                        pipeline?: IPipeline,
+                        url?: URL): Promise<ReadableStream | null | Error | string> {
         if (!segment) {
             return null;
         }
@@ -43,6 +51,7 @@ export default class SegmentLoader {
         try {
             const response = await fetch(url.toString(), {
                 headers: this._data.headers,
+                signal: this._abortSignal,
             });
 
             if (!response.ok) {
@@ -57,7 +66,9 @@ export default class SegmentLoader {
             // Pipe the source through all the transformers in the pipeline.
             let readableStream = source;
             for (const transformer of pipeline.transformers ?? []) {
-                readableStream = readableStream.pipeThrough(transformer);
+                readableStream = readableStream.pipeThrough(transformer, {
+                    signal: this._abortSignal,
+                });
             }
 
             // If the sink is not provided, return the last readable stream in the pipeline.
@@ -66,13 +77,26 @@ export default class SegmentLoader {
             }
 
             // If the sink is provided, pipe the transformed data to the ultimate sink.
-            await readableStream.pipeTo(pipeline.sink);
+            await readableStream.pipeTo(pipeline.sink, {
+                signal: this._abortSignal,
+            });
+
             return null;
 
         } catch (error: unknown) {
-            log.error(error instanceof Error ? error.message : 'Unknown error');
-            return null;
+            if (error instanceof Error && error.name === 'AbortError') {
+                log.debug(`[SegmentLoader] Aborted: ${error.message}`);
+            } else {
+                log.debug(`[SegmentLoader] ${error instanceof Error ? error.message : error}`);
+            }
+            return error instanceof Error ? error : error as string;
         }
+    }
+
+    public abort(reason: string): void {
+        this._aborted = true;
+        this._abortReason = reason;
+        this._abortController.abort(reason);
     }
 
     /**
@@ -85,6 +109,13 @@ export default class SegmentLoader {
         }
 
         const writer = sink.getWriter();
+
+        // If the segment loader is aborted, abort the writer.
+        if (this._aborted) {
+            writer.abort(this._abortReason);
+            return;
+        }
+
         await writer.write(data);
         await writer.ready;
         writer.releaseLock();
@@ -120,7 +151,7 @@ export class InitSegmentLoader extends SegmentLoader {
      * The loaded init segment undergoes all the transformation and then cached.
      * Finally, the transformed data is written to the sink (buffer)
      */
-    public async load(segment: Segment,): Promise<void> {
+    public async load(segment: Segment): Promise<void> {
         const initSegmentUrl = segment.initSegmentUrl;
         if (!initSegmentUrl) {
             return;
@@ -139,10 +170,14 @@ export class InitSegmentLoader extends SegmentLoader {
 
         // Load and stream the init segment data through the pipeline.
         // Get the last readable stream and read all the chunks.
-        const readableStream = await this.stream(segment, pipeline, initSegmentUrl);
-        if (!readableStream) {
+        const result = await this.stream(segment, pipeline, initSegmentUrl);
+        if (!result ||
+            result instanceof Error ||
+            typeof result === 'string') {
             return;
         }
+
+        const readableStream = result as ReadableStream;
 
         // readStream() does a copy of the data.
         // However, this is init segment data which would be smaller in size
@@ -150,7 +185,9 @@ export class InitSegmentLoader extends SegmentLoader {
         const data = await this._readStream(readableStream);
 
         // Cache the init segment data.
-        this._cache.set(initSegmentUrl.toString(), data);
+        if (data?.length) {
+            this._cache.set(initSegmentUrl.toString(), data);
+        }
 
         // Write the init segment data to the sink.
         if (this._pipeline.sink) {
@@ -160,6 +197,13 @@ export class InitSegmentLoader extends SegmentLoader {
 
     private async _readStream(readableStream: ReadableStream): Promise<Uint8Array> {
         const reader = readableStream.getReader();
+
+        // If the segment loader is aborted, cancel the reader.
+        if (this._aborted) {
+            reader.cancel(this._abortReason);
+            return new Uint8Array();
+        }
+
         let data: Uint8Array = new Uint8Array();
 
         // We wish to use async iterator, but it is not supported in Safari.

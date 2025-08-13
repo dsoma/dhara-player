@@ -5,11 +5,18 @@ import type Segment from './segment';
 import type BaseURL from './base-url';
 import type { ISegmentElementClasses } from './base';
 
+export enum LookupType {
+    SEG_NUM = 0,
+    TIME = 1,
+}
+
 export interface ISegmentResolveInfo {
     periodIndex: number;
     adaptationSetIndex: number;
     representationIndex: number;
     segmentNum: number;
+    targetTime: number;
+    lookupType: LookupType;
     basePath?: URL;
 }
 

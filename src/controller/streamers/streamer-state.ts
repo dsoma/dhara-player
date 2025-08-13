@@ -4,6 +4,7 @@ import type Period from "../../model/period";
 import type Representation from "../../model/representation";
 import type Segment from "../../model/segment";
 import type { ISegmentResolveInfo } from "../../model/segment-container";
+import { LookupType } from "../../model/segment-container";
 
 export default class StreamerState {
     private readonly _curAdaptationSet: AdaptationSet;
@@ -21,7 +22,7 @@ export default class StreamerState {
 
     private _segmentLoading: boolean = false;
     private _endOfStream: boolean = false;
-    private _continuous: boolean = false;
+    private _seeking: boolean = false;
 
     constructor(adaptationSet: AdaptationSet, adaptationSetIndex: number) {
         this._curAdaptationSet = adaptationSet;
@@ -35,7 +36,6 @@ export default class StreamerState {
 
         this.repIndex = 0;
         this._curSegmentNum = NaN;
-        this._continuous = false;
     }
 
     public get rep(): Representation | null {
@@ -51,12 +51,14 @@ export default class StreamerState {
         this._segmentLoading = true;
         this._curSegment = segment;
         this._curSegmentNum = segment.seqNum;
-        this._continuous = true;
     }
 
     public onSegmentLoadEnd() {
         this._segmentLoading = false;
-        this._continuous = true;
+    }
+
+    public onSegmentLoadAborted() {
+        this._segmentLoading = false;
     }
 
     public isFirstSegment(): boolean {
@@ -77,20 +79,44 @@ export default class StreamerState {
         return range?.[1] ?? NaN;
     }
 
+    public get curSegmentNum(): number {
+        return this._curSegmentNum;
+    }
+
     public get nextSegmentNum(): number {
         return this._curSegmentNum + 1;
     }
 
-    public shouldLoadSegment(): boolean {
-        return !this._endOfStream && !this._segmentLoading && this._curRep !== null;
+    public getNextSegmentNumInSequence(): number {
+        if (Number.isNaN(this._curSegmentNum)) {
+            return this.firstSegmentNum;
+        }
+
+        if (this._segmentLoading) {
+            return this._curSegmentNum;
+        }
+
+        return this.nextSegmentNum;
     }
 
-    public get continuous(): boolean {
-        return this._continuous;
+    public shouldLoadSegment(nextSegmentNum: number): boolean {
+        if (this._endOfStream || this._curRep === null) {
+            return false;
+        }
+
+        if (this._curSegmentNum === nextSegmentNum) {
+            return false;
+        }
+
+        return !this._segmentLoading;
     }
 
-    public set continuous(value: boolean) {
-        this._continuous = value;
+    public set seeking(value: boolean) {
+        this._seeking = value;
+    }
+
+    public get seeking(): boolean {
+        return this._seeking;
     }
 
     public set endOfStream(value: boolean) {
@@ -102,7 +128,20 @@ export default class StreamerState {
             periodIndex: this._curPeriodIndex,
             adaptationSetIndex: this._curAdaptationSetIndex,
             representationIndex: this._curRepIndex,
-            segmentNum: segmentNum ?? this._curSegmentNum
+            segmentNum: segmentNum ?? this._curSegmentNum,
+            targetTime: NaN,
+            lookupType: LookupType.SEG_NUM,
+        };
+    }
+
+    public getSegmentResolveInfoForPosition(position: number): ISegmentResolveInfo {
+        return {
+            periodIndex: this._curPeriodIndex,
+            adaptationSetIndex: this._curAdaptationSetIndex,
+            representationIndex: this._curRepIndex,
+            segmentNum: NaN,
+            targetTime: position,
+            lookupType: LookupType.TIME,
         };
     }
 }
