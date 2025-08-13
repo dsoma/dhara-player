@@ -4,6 +4,7 @@ import type Period from "../../model/period";
 import type Representation from "../../model/representation";
 import type Segment from "../../model/segment";
 import type { ISegmentResolveInfo } from "../../model/segment-container";
+import { LookupType } from "../../model/segment-container";
 
 export default class StreamerState {
     private readonly _curAdaptationSet: AdaptationSet;
@@ -21,6 +22,7 @@ export default class StreamerState {
 
     private _segmentLoading: boolean = false;
     private _endOfStream: boolean = false;
+    private _seeking: boolean = false;
 
     constructor(adaptationSet: AdaptationSet, adaptationSetIndex: number) {
         this._curAdaptationSet = adaptationSet;
@@ -52,6 +54,10 @@ export default class StreamerState {
     }
 
     public onSegmentLoadEnd() {
+        this._segmentLoading = false;
+    }
+
+    public onSegmentLoadAborted() {
         this._segmentLoading = false;
     }
 
@@ -105,6 +111,14 @@ export default class StreamerState {
         return !this._segmentLoading;
     }
 
+    public set seeking(value: boolean) {
+        this._seeking = value;
+    }
+
+    public get seeking(): boolean {
+        return this._seeking;
+    }
+
     public set endOfStream(value: boolean) {
         this._endOfStream = value;
     }
@@ -114,7 +128,20 @@ export default class StreamerState {
             periodIndex: this._curPeriodIndex,
             adaptationSetIndex: this._curAdaptationSetIndex,
             representationIndex: this._curRepIndex,
-            segmentNum: segmentNum ?? this._curSegmentNum
+            segmentNum: segmentNum ?? this._curSegmentNum,
+            targetTime: NaN,
+            lookupType: LookupType.SEG_NUM,
+        };
+    }
+
+    public getSegmentResolveInfoForPosition(position: number): ISegmentResolveInfo {
+        return {
+            periodIndex: this._curPeriodIndex,
+            adaptationSetIndex: this._curAdaptationSetIndex,
+            representationIndex: this._curRepIndex,
+            segmentNum: NaN,
+            targetTime: position,
+            lookupType: LookupType.TIME,
         };
     }
 }

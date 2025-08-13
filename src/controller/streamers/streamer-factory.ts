@@ -15,13 +15,13 @@ export function create(streamType: StreamType,
                        adaptationSetIndex: number): Streamer {
     switch (streamType) {
         case StreamType.VIDEO:
-            return new VideoStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
+            return new VideoStreamer(streamType, media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.AUDIO:
-            return new AudioStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
+            return new AudioStreamer(streamType, media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.TEXT:
-            return new TextStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
+            return new TextStreamer(streamType, media, adaptationSet, nativePlayer, adaptationSetIndex);
         case StreamType.MUXED:
-            return new MuxedStreamer(media, adaptationSet, nativePlayer, adaptationSetIndex);
+            return new MuxedStreamer(streamType, media, adaptationSet, nativePlayer, adaptationSetIndex);
         default:
             throw new Error(`Unsupported stream type: ${streamType}`);
     }

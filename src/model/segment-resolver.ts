@@ -1,6 +1,6 @@
 import Segment from './segment';
 import type ISegmentContainer from './segment-container';
-import type { ISegmentResolveInfo } from './segment-container';
+import { LookupType, type ISegmentResolveInfo } from './segment-container';
 import Representation from './representation';
 import AdaptationSet from './adaptation-set';
 
@@ -11,10 +11,9 @@ export function getSegment(segmentContainer: ISegmentContainer,
     }
 
     const basePath = segmentContainer.baseUrls?.[0]?.url ?? new URL('');
-    const segmentNum = segmentResolveInfo.segmentNum;
 
     if (segmentContainer.segmentTemplate) {
-        return fromTemplate(segmentContainer, segmentResolveInfo, basePath, segmentNum);
+        return fromTemplate(segmentContainer, segmentResolveInfo, basePath);
     }
 
     if (segmentContainer.segmentList) {
@@ -30,8 +29,7 @@ export function getSegment(segmentContainer: ISegmentContainer,
 
 function fromTemplate(segmentContainer: ISegmentContainer,
                       segmentResolveInfo: ISegmentResolveInfo,
-                      basePath: URL,
-                      segmentNum: number): Segment | null {
+                      basePath: URL): Segment | null {
     const template = segmentContainer.segmentTemplate;
     if (!template) {
         return null;
@@ -39,20 +37,26 @@ function fromTemplate(segmentContainer: ISegmentContainer,
 
     const periodInfo = template.periodInfo;
     const baseUrl = template.baseUrl ?? basePath;
+    const periodStart = periodInfo?.startTime ?? 0;
+    const periodEnd = periodInfo?.endTime ?? 0;
+    let duration  = template.durationSecs ?? 0;
 
     // Find the position within the segment list:
     const start = template.startNumber ?? 1;
     const end   = template.endNumber ?? start;
-    const pos   = segmentNum;
-    if (pos < start || pos > end) {
+    let pos     = segmentResolveInfo.segmentNum;
+
+    if (segmentResolveInfo.lookupType === LookupType.TIME) {
+        const time = segmentResolveInfo.targetTime - periodStart;
+        pos = start + Math.floor(time / duration);
+    }
+
+    if (Number.isNaN(pos) || pos < start || pos > end) {
         return null;
     }
 
     // Find start and end times:
     // If duration is absent, then we must use SegmentTimeline. (fix it later)
-    const periodStart = periodInfo?.startTime ?? 0;
-    const periodEnd   = periodInfo?.endTime ?? 0;
-    let duration  = template.durationSecs ?? 0;
     const startTime = periodStart + (pos - start) * duration;
     let endTime   = startTime + duration;
 
@@ -68,7 +72,7 @@ function fromTemplate(segmentContainer: ISegmentContainer,
 
     // Form segment media and init segment urls:
     const tokenMap = {
-        Number: segmentNum,
+        Number: pos,
         RepresentationID: getRepId(segmentContainer, segmentResolveInfo),
         Bandwidth: getBandwidth(segmentContainer, segmentResolveInfo),
         Time: startTime,

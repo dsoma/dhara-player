@@ -74,4 +74,37 @@ export default class Media {
         }
         return this._mpd?.getSegment(segmentResolveInfo) ?? null;
     }
+
+    public getSegmentForPosition(position: number, resolveInfo: ISegmentResolveInfo): Segment | null {
+        const periods = this.periods;
+        if (!periods.length) {
+            return null;
+        }
+
+        const periodIndex = this.getPeriodIndexForPosition(position);
+        if (periodIndex < 0) {
+            return null;
+        }
+
+        resolveInfo.periodIndex = periodIndex;
+        return this.getSegment(resolveInfo);
+    }
+
+    public getPeriodIndexForPosition(position: number): number {
+        const periods = this.periods;
+        if (!periods.length) {
+            return -1;
+        }
+
+        for (let i = 0; i < periods.length; i++) {
+            const period = periods[i];
+            const periodStart = period.start?.seconds ?? 0;
+            const periodEnd   = period.endTimeInSeconds ?? 0;
+            if (position >= periodStart && position < periodEnd) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 }
