@@ -32,7 +32,6 @@ export default class Streamer {
     protected _timer: NodeJS.Timeout | null = null;
     protected _name: string = this.constructor.name;
     protected _initSegmentLoader: InitSegmentLoader;
-    protected _initSegmentLoaded: boolean = false;
     protected _curBufferSink: BufferSink | null = null;
     protected _segmentLoader: SegmentLoader | null = null;
 
@@ -97,7 +96,7 @@ export default class Streamer {
 
     public async onSeeking() {
         this._state.seeking = true;
-        const seekPosition = this._mediaElement?.currentTime ?? NaN;
+        const seekPosition = this._currentTime;
         log.debug(`[${this._name}] onSeeking: ${seekPosition}`);
 
         const targetPosition = this._getTargetPosition(seekPosition);
@@ -107,21 +106,21 @@ export default class Streamer {
         }
 
         this.stop();
-        this._abortLoadingIfRequired(nextSegment);
+        this._abortLoadingIfRequired(nextSegment, ABORT_FOR_SEEK);
+
         log.debug(`[${this._name}] onSeeking: nextSegment = ${nextSegment.seqNum}`);
-        this._buffer?.reset();
 
         if (this._shouldLoadSegment(nextSegment.seqNum)) {
             await this._loadSegment(nextSegment);
         }
 
-        this.start();
+        // this.start();
     }
 
     public onSeeked() {
         this._state.seeking = false;
         log.debug(`[${this._name}] onSeeked`);
-        // cleanup
+        this.start();
     }
 
     public onEnded() {
@@ -133,10 +132,6 @@ export default class Streamer {
         log.error(`[${this._name}] onError: ${error}`);
         this.stop();
         this._segmentLoader = null;
-    }
-
-    public onTimeupdate() {
-        // const currentTime = this._mediaElement?.currentTime ?? 0;
     }
 
     public start() {
@@ -194,24 +189,21 @@ export default class Streamer {
     }
 
     protected _shouldLoadSegment(segmentNum: number): boolean {
-        if (this._nativePlayer.bufferLength >= MAX_BUFFER_LENGTH) {
+        const bufferedLength = this._buffer?.getBufferedLength(this._currentTime) ?? 0;
+        if (bufferedLength >= MAX_BUFFER_LENGTH) {
             return false;
         }
         return this._state.shouldLoadSegment(segmentNum);
     }
 
-    protected _abortLoadingIfRequired(segment: Segment) {
+    protected _abortLoadingIfRequired(segment: Segment, reason: string) {
         if (!segment || this._state.curSegmentNum === segment.seqNum) {
             return;
         }
 
-        this._abortSegmentLoad();
-    }
-
-    protected _abortSegmentLoad() {
-        this._segmentLoader?.abort(ABORT_FOR_SEEK);
-        this._initSegmentLoaded = false;
+        this._segmentLoader?.abort(reason);
         this._state.onSegmentLoadAborted();
+        this._buffer?.open();
     }
 
     protected _getNextSegmentForPosition(targetPosition: number): Segment | null {
@@ -268,7 +260,12 @@ export default class Streamer {
         this._state.onSegmentLoadStart(segment);
 
         try {
-            if (!this._initSegmentLoaded) {
+            // First clear the past buffer to avoid the buffer overflow.
+            if (!this._state.seeking) {
+                this._buffer?.clearPastBuffer(this._currentTime);
+            }
+
+            if (!this._state.initSegmentLoaded) {
                 await this._loadInitSegment(segment);
             }
 
@@ -280,14 +277,15 @@ export default class Streamer {
 
             this._state.onSegmentLoadEnd();
 
-            // If this is the last segment of the media, then notify the buffer to flush and close.
+            // If this is the last segment of the media,
+            // then notify the buffer to flush and close.
             if (this._state.isLastSegment()) {
                 this._endOfStream();
             }
         } catch (error) {
             if ((error instanceof Error && error.name === 'AbortError')
                 || error === ABORT_FOR_SEEK) {
-                this._state.onSegmentLoadAborted();
+                // Ignore this error - we are just aborting data
             } else {
                 log.error(`[${this._name}] Failed to load segment: ${error}`);
             }
@@ -298,11 +296,15 @@ export default class Streamer {
 
     protected async _loadInitSegment(segment: Segment) {
         await this._initSegmentLoader.load(segment);
-        this._initSegmentLoaded = true;
+        this._state.initSegmentLoaded = true;
     }
 
     protected _endOfStream() {
         this._buffer?.endOfStream();
         this._state.endOfStream = true;
+    }
+
+    protected get _currentTime(): number {
+        return this._mediaElement?.currentTime ?? NaN;
     }
 }

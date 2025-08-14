@@ -97,6 +97,12 @@ export default class DharaPlayerController extends EventEmitter {
             return;
         }
 
+        const srcBufferCount = this._nativePlayer.mediaSource?.activeSourceBuffers.length ?? 0;
+        if (this._streamingEngine && srcBufferCount) {
+            this.setState(DPlayerState.STREAMING);
+            return;
+        }
+
         this._streamingEngine = new StreamingEngine(this._media, this._nativePlayer);
 
         this._streamingEngine.on(StreamingEngineEvent.ERROR, (errMsg: string) => {

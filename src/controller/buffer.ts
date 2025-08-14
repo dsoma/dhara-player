@@ -1,14 +1,22 @@
 import log from 'loglevel';
 import { StreamType } from '../model/adaptation-set';
 
+const PAST_BUFFER_LENGTH = 30;
+const REMOVE_BUFFER_THRESHOLD = 2;
+
+type Range = {
+    start: number;
+    end: number;
+}
+
 export default class Buffer {
     public readonly streamType: StreamType;
     private readonly _srcBuffer: SourceBuffer;
     private readonly _mediaSource: MediaSource;
     private _queue: Uint8Array[] = [];
+    private _removeQueue: Range[] = [];
     private _endOfStream: boolean = false;
     private _closed: boolean = false;
-    private _aborted: boolean = false;
 
     constructor(streamType: StreamType, mimeCodec: string, mediaSource: MediaSource) {
         this.streamType = streamType;
@@ -20,6 +28,7 @@ export default class Buffer {
 
     public destroy() {
         this._queue = [];
+        this._removeQueue = [];
         this._srcBuffer.removeEventListener('updateend', () => { this._onUpdateEnd(); });
         this._srcBuffer.removeEventListener('error', (event) => { this._onError(event); });
     }
@@ -31,25 +40,21 @@ export default class Buffer {
 
     public clear() {
         this._queue = [];
+        this._removeQueue = [];
     }
 
-    public async abort(): Promise<void> {
+    public abort() {
         if (this._mediaSource.readyState !== 'open') {
             log.warn('MSE is not open');
             return;
         }
 
+        log.debug(`[Buffer][${this.streamType}] Aborting buffer`);
         this.clear();
-        this._aborted = true;
         this._srcBuffer.abort();
     }
 
-    public reset() {
-        this._aborted = false;
-    }
-
     public getNewSink(): WritableStream {
-        this.reset();
         return new BufferSink(this);
     }
 
@@ -58,12 +63,48 @@ export default class Buffer {
         this._closeIfDone();
     }
 
+    public open() {
+        this._endOfStream = false;
+        this._closed = false;
+    }
+
     public isClosed(): boolean {
         return this._closed && this._endOfStream;
     }
 
     public buffered(): TimeRanges {
         return this._srcBuffer.buffered;
+    }
+
+    public getBufferedLength(currentPosition: number): number {
+        const buffered = this._srcBuffer.buffered;
+        for (let i = 0; i < buffered.length; i++) {
+            const start = buffered.start(i);
+            const end = buffered.end(i);
+            if (currentPosition >= start && currentPosition <= end) {
+                return end - currentPosition;
+            }
+        }
+        return 0;
+    }
+
+    public clearPastBuffer(currentPosition: number) {
+        const pastBufferedLength = this._getPastBufferedLength(currentPosition);
+        if (pastBufferedLength <= 0 || pastBufferedLength <= PAST_BUFFER_LENGTH) {
+            return;
+        }
+
+        const removalAmount = pastBufferedLength - PAST_BUFFER_LENGTH;
+        if (removalAmount <= REMOVE_BUFFER_THRESHOLD) {
+            return;
+        }
+
+        const rangeStart = this._srcBuffer.buffered.length > 0 ? this._srcBuffer.buffered.start(0) : 0;
+        const rangeEnd   = Math.max(rangeStart, rangeStart + removalAmount);
+        if (rangeEnd > rangeStart) {
+            this._removeQueue.push({ start: rangeStart, end: rangeEnd });
+            this._processQueue();
+        }
     }
 
     public printBufferedRanges() {
@@ -79,7 +120,20 @@ export default class Buffer {
     }
 
     private _processQueue() {
-        if (this._srcBuffer.updating || !this._queue.length || this._aborted) {
+        if (this._srcBuffer.updating) {
+            return;
+        }
+
+        // Remove buffer if there is something in the queue.
+        if (this._removeQueue.length) {
+            const range = this._removeQueue.shift();
+            if (range) {
+                this._srcBuffer.remove(range.start, range.end);
+            }
+        }
+
+        // Append buffer if there is something in the queue.
+        if (!this._queue.length) {
             return;
         }
 
@@ -107,6 +161,22 @@ export default class Buffer {
         if (this._endOfStream && !this._queue.length) {
             this._closed = true;
         }
+    }
+
+    private _getPastBufferedLength(currentPosition: number): number {
+        const buffered = this._srcBuffer.buffered;
+        let pastBufferedLength = 0;
+        for (let i = 0; i < buffered.length; i++) {
+            const start = buffered.start(i);
+            const end = buffered.end(i);
+            if (end < currentPosition) {
+                pastBufferedLength += end - start;
+            } else if (start < currentPosition && end >= currentPosition) {
+                pastBufferedLength += currentPosition - start;
+                break;
+            }
+        }
+        return pastBufferedLength;
     }
 }
 

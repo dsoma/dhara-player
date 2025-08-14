@@ -84,16 +84,11 @@ export default class SegmentLoader {
             return null;
 
         } catch (error: unknown) {
-            if (error instanceof Error && error.name === 'AbortError') {
-                log.debug(`[SegmentLoader] Aborted: ${error.message}`);
-            } else {
-                log.debug(`[SegmentLoader] ${error instanceof Error ? error.message : error}`);
-            }
-            return error instanceof Error ? error : error as string;
+            return this._processError(error);
         }
     }
 
-    public abort(reason: string): void {
+    public abort(reason: string) {
         this._aborted = true;
         this._abortReason = reason;
         this._abortController.abort(reason);
@@ -119,6 +114,21 @@ export default class SegmentLoader {
         await writer.write(data);
         await writer.ready;
         writer.releaseLock();
+    }
+
+    private _processError(error: unknown): Error | string | null {
+        if (error instanceof Error && error.name === 'AbortError') {
+            log.debug(`[SegmentLoader] Aborted: ${error.message}`);
+            return error;
+        }
+
+        if (typeof error === 'string' && error === this._abortReason) {
+            log.debug(`[SegmentLoader] Aborted: ${error}`);
+            return error as string;
+        }
+
+        log.debug(`[SegmentLoader] ${error instanceof Error ? error.message : error}`);
+        return error instanceof Error ? error : error as string;
     }
 }
 
