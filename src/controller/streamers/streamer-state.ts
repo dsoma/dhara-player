@@ -21,6 +21,7 @@ export default class StreamerState {
     private _curSegmentNum: number = NaN;
 
     private _segmentLoading: boolean = false;
+    private _initSegmentLoaded: boolean = false;
     private _endOfStream: boolean = false;
     private _seeking: boolean = false;
 
@@ -59,6 +60,16 @@ export default class StreamerState {
 
     public onSegmentLoadAborted() {
         this._segmentLoading = false;
+        this._endOfStream = false;
+        this._initSegmentLoaded = false;
+    }
+
+    public set initSegmentLoaded(value: boolean) {
+        this._initSegmentLoaded = value;
+    }
+
+    public get initSegmentLoaded(): boolean {
+        return this._initSegmentLoaded;
     }
 
     public isFirstSegment(): boolean {
